@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR/taro-api\" && make verify 2>&1 | tail -20",
+            "timeout": 120000
+          }
+        ]
+      }
+    ]
+  }
+}
