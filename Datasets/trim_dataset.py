@@ -121,17 +121,83 @@ def simple_sentiment(score):
 reviews_trim = reviews_trim.copy()
 reviews_trim["sentiment"] = reviews_trim["review_score"].apply(simple_sentiment)
 
-# ── Step 10: Merge orders + order_items ──────────────────────────────
+# ── Step 10: Generate English review comments ────────────────────────
+REVIEW_TEMPLATES = {
+    5: [
+        "Absolutely love this! Exactly what I needed.",
+        "Excellent quality, arrived quickly. Very happy with my purchase.",
+        "Best purchase I've made in a while. Highly recommend!",
+        "Amazing product, exceeded my expectations.",
+        "Perfect! Works great and looks even better.",
+        "Five stars, no complaints at all. Would buy again.",
+        "Super impressed with the quality for the price.",
+        "Delivered on time and works perfectly. Very satisfied.",
+        "Great value for money. Couldn't be happier.",
+        "Wow, this is even better than I expected!",
+        "Top quality product. Will definitely be ordering more.",
+        "Fantastic! My go-to from now on.",
+    ],
+    4: [
+        "Really good product overall. Minor packaging issue but nothing major.",
+        "Happy with this purchase. Good quality for the price.",
+        "Works well, does exactly what it says. Solid buy.",
+        "Very good, just took a bit longer to arrive than expected.",
+        "Nice product. Would have given 5 stars but delivery was slow.",
+        "Good quality, comfortable and well made.",
+        "Pleased with this. A few small improvements could make it perfect.",
+        "Solid product, meets expectations. Would recommend.",
+        "Pretty good! Slight colour difference from the photo but still nice.",
+        "Does the job well. Happy with my purchase.",
+    ],
+    3: [
+        "It's okay. Nothing special but does the job.",
+        "Average product. Expected a bit more for the price.",
+        "Decent quality but packaging could be better.",
+        "Not bad, not great. It works but feels a bit cheap.",
+        "Took ages to arrive. Product itself is fine though.",
+        "It's alright. Might look for alternatives next time.",
+        "Mixed feelings. Some aspects are good, others not so much.",
+        "Reasonable product for the price point.",
+    ],
+    2: [
+        "Disappointed. Quality is not what I expected.",
+        "Took forever to arrive and product was smaller than described.",
+        "Not great. Feels flimsy and poorly made.",
+        "Wouldn't recommend. Doesn't match the description.",
+        "Had issues from day one. Not worth the money.",
+        "Poor packaging, arrived slightly damaged.",
+        "Expected better quality. Probably won't buy again.",
+    ],
+    1: [
+        "Terrible quality. Broke after first use.",
+        "Complete waste of money. Nothing like the description.",
+        "Never arrived. Very frustrating experience.",
+        "Awful product. Returning immediately.",
+        "Do not buy this. Extremely poor quality.",
+        "Worst purchase I've ever made. Very disappointed.",
+        "Product was damaged on arrival. Requesting a refund.",
+    ],
+}
+
+def generate_review_comment(row):
+    score = row["review_score"]
+    templates = REVIEW_TEMPLATES[score]
+    idx = hash(row["review_id"]) % len(templates)
+    return templates[idx]
+
+reviews_trim["review_comment_message"] = reviews_trim.apply(generate_review_comment, axis=1)
+
+# ── Step 11: Merge orders + order_items ──────────────────────────────
 orders_merged = orders_trim[["order_id", "customer_id"]].merge(
     order_items_trim[["order_id", "product_id", "price"]],
     on="order_id"
 )
 
-# ── Step 11: Filter reviews to only orders that survived the merge ──
+# ── Step 12: Filter reviews to only orders that survived the merge ──
 merged_order_ids = set(orders_merged["order_id"])
 reviews_trim = reviews_trim[reviews_trim["order_id"].isin(merged_order_ids)]
 
-# ── Step 12: Slim down columns ───────────────────────────────────────
+# ── Step 13: Slim down columns ───────────────────────────────────────
 customers_out = customers_trim[["customer_id", "customer_name", "customer_city", "customer_state"]]
 reviews_out = reviews_trim[["review_id", "order_id", "review_score", "review_comment_message", "sentiment"]]
 payments_out = payments_trim[["order_id", "payment_type", "payment_installments", "payment_value"]]
