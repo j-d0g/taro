@@ -1,70 +1,72 @@
 /**
- * mock-data.js — Mock product data (from real CSVs) and mock chat responses.
+ * mock-data.js — Mock data matching real CSV schema + SurrealDB edges.
+ * IDs are real product_ids from trimmed/products.csv (first 8 chars shown, full 32-char in DB).
  * Replace with real API calls when backend is ready.
  */
 
 const MOCK_PRODUCTS = [
-  {id:"ce5b9184",name:"Clinique Moisture Surge Hydration Set",vertical:"Fitness",subcategory:"Equipment",price:32.02,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",description:"Intensive hydration set with 72-hour moisture surge technology."},
-  {id:"4473f3e5",name:"L'Oreal Men Expert Sport Roll-On Deodorant 50ml",vertical:"Fitness",subcategory:"Tech",price:19.18,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/12183657-1834927998090174.jpg",description:"48-hour anti-perspirant designed for active lifestyles."},
-  {id:"a1b2c3d4",name:"benefit Hoola Matte Bronzer Mini 2.5g",vertical:"Fitness",subcategory:"Tech",price:15.50,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/13713961-1174915139428614.jpg",description:"Travel-size matte bronzer for a natural sun-kissed glow."},
-  {id:"e5f6a7b8",name:"Clinique Take The Day Off Cleansing Balm 125ml",vertical:"Fitness",subcategory:"Nutrition",price:24.99,avg_rating:4.8,image_url:"https://static.thcdn.com/productimg/original/11144730-1515055854992990.jpg",description:"Lightweight balm dissolves tenacious makeup and sunscreen."},
-  {id:"f6574524",name:"Wrist Wraps Pair - Teal",vertical:"Fitness",subcategory:"Accessories",price:52.24,avg_rating:1.0,image_url:"",description:"Heavy-duty wrist wraps for powerlifting and Olympic lifts."},
-  {id:"5f504b3a",name:"Knee Sleeves Pair - Red",vertical:"Fitness",subcategory:"Accessories",price:44.47,avg_rating:4.2,image_url:"",description:"7mm neoprene knee sleeves for squat support and warmth."},
-  {id:"f9471562",name:"Shark SilkiPro Hair Straightener + Dryer",vertical:"Beauty",subcategory:"Tools",price:6.23,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17726736-3765312733647679.jpg",description:"2-in-1 silk styling tool with ionic ceramic plates."},
-  {id:"b3c4d5e6",name:"Stylpro Heated LED Electric Gua Sha",vertical:"Beauty",subcategory:"Tools",price:38.50,avg_rating:4.3,image_url:"https://static.thcdn.com/productimg/original/16718539-6375309095782284.jpg",description:"Heated facial massage tool with LED therapy."},
-  {id:"c4d5e6f7",name:"L'Oreal Professionnel Metal Detox Hair Mask",vertical:"Beauty",subcategory:"Skincare",price:28.90,avg_rating:4.7,image_url:"https://static.thcdn.com/productimg/original/13043383-1474897165519900.jpg",description:"Professional-grade mask that neutralises metal particles in hair."},
-  {id:"d5e6f7a8",name:"The Ordinary Glucoside Foaming Cleanser 150ml",vertical:"Beauty",subcategory:"Skincare",price:12.80,avg_rating:4.4,image_url:"https://static.thcdn.com/productimg/original/14242474-2834942685327564.jpg",description:"Gentle foaming cleanser with glucoside surfactants."},
-  {id:"518ef5de",name:"Silk Pillowcase - Stone",vertical:"Beauty",subcategory:"Bath & Body",price:45.54,avg_rating:4.0,image_url:"",description:"100% mulberry silk pillowcase, reduces hair frizz and skin creases."},
-  {id:"adf591c6",name:"Niacinamide 10% Serum 30ml",vertical:"Beauty",subcategory:"Skincare",price:46.77,avg_rating:5.0,image_url:"",description:"High-strength niacinamide for pore reduction and oil control."},
-  {id:"3fcd8dfe",name:"Bobbi Brown Vitamin Enriched Face Base 50ml",vertical:"Wellness",subcategory:"Family Health",price:19.84,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/11512195-1075217807350538.jpg",description:"Priming moisturiser packed with vitamins B, C and E."},
-  {id:"47969dd9",name:"NEOM Wellbeing Essential Oil Discovery Set",vertical:"Wellness",subcategory:"Mindfulness",price:21.18,avg_rating:3.0,image_url:"https://static.thcdn.com/productimg/original/15463353-1255172214786905.jpg",description:"Four essential oil blends for energy, calm, sleep and happiness."},
-  {id:"e6f7a8b9",name:"ESPA Bergamot & Jasmine Shower Gel 250ml",vertical:"Wellness",subcategory:"Mindfulness",price:22.50,avg_rating:4.6,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",description:"Aromatic shower gel with bergamot, jasmine and patchouli."},
-  {id:"f7a8b9c0",name:"The Ordinary Skin Support Set",vertical:"Wellness",subcategory:"Home Wellness",price:13.80,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/15061739-2215091651791714.jpg",description:"Starter set with cleanser, hyaluronic acid and moisturiser."},
-  {id:"cef67bcf",name:"Kids Multivitamin Gummies 60 - Berry",vertical:"Wellness",subcategory:"Family Health",price:24.46,avg_rating:1.0,image_url:"",description:"Berry-flavoured multivitamin gummies for children aged 3+."},
-  {id:"cf55509e",name:"Gratitude Journal Hardcover - Lavender",vertical:"Wellness",subcategory:"Mindfulness",price:21.32,avg_rating:5.0,image_url:"",description:"Guided journal with daily gratitude prompts and reflections."},
+  // Fitness
+  {id:"ce5b9184",name:"EXCLUSIVE Clinique Moisture Surge Hydration Skin Heroes Set",vertical:"Fitness",subcategory:"Equipment",price:32.02,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",description:"Clinique Moisture Surge Hydration Skin Heroes Set with four full-sized skincare essentials."},
+  {id:"4473f3e5",name:"L'Oreal Men Expert Invincible Sport 96H Roll On Anti-Perspirant Deodorant 50ml",vertical:"Fitness",subcategory:"Tech",price:19.18,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/12183657-1834927998090174.jpg",description:"Sport roll-on anti-perspirant enriched with Magnesia for 96-hour protection."},
+  {id:"4fcb3d9a",name:"EXCLUSIVE Clinique Moisture Surge Hydration Skin Heroes Set",vertical:"Fitness",subcategory:"Equipment",price:58.59,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",description:"Clinique Moisture Surge Hydration Skin Heroes Set with four full-sized skincare essentials."},
+  {id:"f4f67cca",name:"Resistance Band Set (3 pack) - Blue",vertical:"Fitness",subcategory:"Equipment",price:29.90,avg_rating:4.2,image_url:"",description:"Set of 3 resistance bands with light, medium and heavy resistance levels."},
+  {id:"d92239d3",name:"Resistance Band Set (3 pack) - Grey",vertical:"Fitness",subcategory:"Equipment",price:29.90,avg_rating:4.0,image_url:"",description:"Set of 3 resistance bands with light, medium and heavy resistance levels."},
+  {id:"774e21c6",name:"Lifting Gloves Size L - Red",vertical:"Fitness",subcategory:"Equipment",price:44.47,avg_rating:4.2,image_url:"",description:"Padded lifting gloves with wrist support for heavy training sessions."},
+  // Beauty
+  {id:"f9471562",name:"Shark SilkiPro Straight Hair Straightener + Dryer in One Tool",vertical:"Beauty",subcategory:"Tools",price:6.23,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17726736-3765312733647679.jpg",description:"2-in-1 straightener and dryer with HeatSense Ceramic Plates and rapid-dry technology."},
+  {id:"3c883b9d",name:"ESPA Bergamot and Jasmine Bath and Shower Gel 250ml",vertical:"Beauty",subcategory:"Bath & Body",price:48.96,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",description:"Bath and shower gel with pure essential oils of bergamot and jasmine. Soap-free formula."},
+  {id:"94634469",name:"Konjac Sponge Natural - Cream",vertical:"Beauty",subcategory:"Bath & Body",price:12.80,avg_rating:4.4,image_url:"",description:"100% natural konjac fibre sponge for gentle daily cleansing."},
+  {id:"518ef5de",name:"Silk Pillowcase - Stone",vertical:"Beauty",subcategory:"Bath & Body",price:45.54,avg_rating:4.0,image_url:"",description:"Premium Silk Pillowcase - Stone. Part of our Bath & Body collection."},
+  {id:"4b967866",name:"Stylpro Heated LED Electric Gua Sha",vertical:"Beauty",subcategory:"Tools",price:38.50,avg_rating:4.3,image_url:"https://static.thcdn.com/productimg/original/16718539-6375309095782284.jpg",description:"Heated facial massage tool with LED therapy for skin rejuvenation."},
+  {id:"ad0a798e",name:"ESPA Bergamot and Jasmine Bath and Shower Gel 250ml",vertical:"Beauty",subcategory:"Bath & Body",price:22.50,avg_rating:4.6,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",description:"Aromatic shower gel with bergamot, jasmine and patchouli essential oils."},
+  // Wellness
+  {id:"8d777214",name:"The INKEY List Starter Retinol Serum 30ml",vertical:"Wellness",subcategory:"Home Wellness",price:19.90,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/14242474-2834942685327564.jpg",description:"Beginner-friendly retinol serum with 0.05% retinol for smoother skin."},
+  {id:"728cfef9",name:"The Ordinary The Skin Support Set",vertical:"Wellness",subcategory:"Home Wellness",price:13.80,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/15061739-2215091651791714.jpg",description:"Starter set with cleanser, hyaluronic acid and moisturiser."},
+  {id:"3fcd8dfe",name:"Bobbi Brown Vitamin Enriched Face Base 50ml",vertical:"Wellness",subcategory:"Family Health",price:19.84,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/11512195-1075217807350538.jpg",description:"Bestselling hybrid primer and moisturiser enriched with hyaluronic acid, shea butter."},
+  {id:"b8960327",name:"Posture Corrector Adjustable - Natural Wood",vertical:"Wellness",subcategory:"Home Wellness",price:35.00,avg_rating:3.8,image_url:"",description:"Adjustable posture corrector made from sustainable natural wood."},
+  {id:"cef67bcf",name:"Kids Multivitamin Gummies 60 - Berry",vertical:"Wellness",subcategory:"Family Health",price:24.46,avg_rating:1.0,image_url:"",description:"Natural Kids Multivitamin Gummies 60 - Berry. From our Family Health range."},
+  {id:"cf55509e",name:"Gratitude Journal Hardcover - Lavender",vertical:"Wellness",subcategory:"Mindfulness",price:21.32,avg_rating:5.0,image_url:"",description:"Natural Gratitude Journal Hardcover - Lavender. From our Mindfulness range."},
 ];
 
-// Mock "also bought" data  (product_id → list of related product_ids)
+// Mock also_bought edges (product -also_bought-> product, derived from co-purchase)
+// Real weights from dataset: 4fcb3d9a<->f4f67cca (w=3), 94634469<->ad0a798e (w=2)
 const MOCK_ALSO_BOUGHT = {
-  "ce5b9184": ["3fcd8dfe", "adf591c6"],
-  "f9471562": ["b3c4d5e6", "c4d5e6f7"],
-  "3fcd8dfe": ["ce5b9184", "47969dd9"],
-  "d5e6f7a8": ["adf591c6", "c4d5e6f7"],
-  "47969dd9": ["e6f7a8b9", "cf55509e"],
+  "4fcb3d9a": ["f4f67cca"],            // Clinique Set <-> Resistance Band Blue (w=3)
+  "f4f67cca": ["4fcb3d9a"],            // reverse
+  "94634469": ["ad0a798e", "3c883b9d"],// Konjac Sponge <-> ESPA Shower Gel (w=2)
+  "ad0a798e": ["94634469"],            // reverse
+  "8d777214": ["728cfef9", "b8960327"],// INKEY Retinol <-> Skin Support Set + Posture Corrector
+  "728cfef9": ["8d777214", "d92239d3"],// Skin Support <-> INKEY Retinol + Resistance Band Grey
+  "f9471562": ["4b967866"],            // SilkiPro <-> Gua Sha
+  "4b967866": ["f9471562"],            // reverse
 };
 
-// Mock reviews per product
+// Mock reviews keyed by order_id (schema: order -has_review-> review)
+// Real review_ids and comments from trimmed/reviews.csv
 const MOCK_REVIEWS = {
-  "ce5b9184": [
-    {score: 5, comment: "Amazing hydration, my skin feels incredible after a week!", sentiment: "positive"},
-    {score: 4, comment: "Good product but packaging could be better.", sentiment: "positive"},
+  "73fa93bf": [
+    {review_id: "29aeeca2", score: 5, comment: "Amazing product, exceeded my expectations.", sentiment: "positive"},
   ],
-  "f9471562": [
-    {score: 5, comment: "Best straightener I've ever owned. Heats up in seconds.", sentiment: "positive"},
-    {score: 5, comment: "Salon quality at home, absolutely love it.", sentiment: "positive"},
+  "5ff96c15": [
+    {review_id: "f7c4243c", score: 5, comment: "Absolutely love this! Exactly what I needed.", sentiment: "positive"},
   ],
-  "3fcd8dfe": [
-    {score: 4, comment: "Great as a primer, keeps makeup on all day.", sentiment: "positive"},
-    {score: 3, comment: "A bit pricey for the size but decent quality.", sentiment: "neutral"},
+  "dcb36b51": [
+    {review_id: "ab3056e4", score: 2, comment: "Had issues from day one. Not worth the money.", sentiment: "negative"},
   ],
-  "47969dd9": [
-    {score: 3, comment: "Nice scents but they don't last very long.", sentiment: "neutral"},
-    {score: 2, comment: "Expected more variety in the set.", sentiment: "negative"},
+  "ab1a70d5": [
+    {review_id: "2e889d1c", score: 3, comment: "Decent quality but packaging could be better.", sentiment: "neutral"},
   ],
 };
 
-// Mock customer profile (simulates a logged-in user with purchase history via `placed->order->contains->product`)
+// Mock customer — real data from trimmed/customers.csv + orders.csv
+// Schema: customer -placed-> order -contains-> product
 const MOCK_CUSTOMER = {
-  id: "154e666b",
-  name: "Charlotte Souza",
-  city: "contagem",
-  state: "MG",
-  purchases: [
-    {product_id: "ce5b9184", total_spent: 32.02, order_count: 1},
-    {product_id: "f9471562", total_spent: 12.46, order_count: 2},
-    {product_id: "47969dd9", total_spent: 21.18, order_count: 1},
-    {product_id: "d5e6f7a8", total_spent: 12.80, order_count: 1},
-    {product_id: "3fcd8dfe", total_spent: 39.68, order_count: 2},
+  id: "dfa8a1b5",  // dfa8a1b565b79938d84942f83d88a2f7
+  name: "Diego Carvalho",
+  city: "forquilhinha",
+  state: "SC",
+  orders: [
+    {order_id: "73fa93bf", price: 104.65, products: ["8d777214", "b8960327", "d92239d3", "728cfef9"]},
   ],
 };
 
@@ -76,49 +78,53 @@ const MOCK_SUBCATEGORIES = {
 };
 
 // Mock graph traversal data for visualization
-// Each response maps to a graph that shows which nodes/edges the agent traversed
+// Each response maps to a graph showing which SurrealDB nodes/edges the agent traversed
 const MOCK_GRAPHS = [
+  // Response 1: hybrid search -> source_id -> also_bought + customer placed->contains
   {
     nodes: [
       {id: "q", label: "Query", type: "query"},
-      {id: "d1", label: "doc: Clinique", type: "faq"},
+      {id: "d1", label: "doc: Clinique Set", type: "faq"},
       {id: "d2", label: "doc: Skin Support", type: "faq"},
-      {id: "p1", label: "Clinique Set", type: "product"},
-      {id: "p3", label: "Bobbi Brown Base", type: "product"},
-      {id: "c1", label: "Charlotte S.", type: "customer"},
+      {id: "p1", label: "product:4fcb3d9a", type: "product"},
+      {id: "p2", label: "product:f4f67cca", type: "product"},
+      {id: "c1", label: "customer:dfa8a1b5", type: "customer"},
+      {id: "o1", label: "order:73fa93bf", type: "order"},
     ],
     edges: [
       {from: "q", to: "d1", label: "hybrid", type: "bm25"},
-      {from: "q", to: "d2", label: "hybrid", type: "bm25"},
+      {from: "q", to: "d2", label: "hybrid", type: "vector"},
       {from: "d1", to: "p1", label: "source_id", type: "relational"},
-      {from: "p1", to: "p3", label: "also_bought", type: "graph"},
-      {from: "c1", to: "p1", label: "bought", type: "graph"},
-      {from: "c1", to: "p3", label: "bought", type: "graph"},
+      {from: "p1", to: "p2", label: "also_bought", type: "graph"},
+      {from: "c1", to: "o1", label: "placed", type: "graph"},
+      {from: "o1", to: "p1", label: "contains", type: "graph"},
     ],
   },
+  // Response 2: keyword search -> order has_review + contains -> also_bought
   {
     nodes: [
       {id: "q", label: "Query", type: "query"},
-      {id: "r1", label: "\"Best ever!\"", type: "review"},
-      {id: "r2", label: "\"Salon quality\"", type: "review"},
-      {id: "p1", label: "SilkiPro", type: "product"},
-      {id: "p2", label: "Hair Mask", type: "product"},
-      {id: "o1", label: "Order #7d9a", type: "order"},
+      {id: "r1", label: "review:29aeeca2", type: "review"},
+      {id: "p1", label: "product:f9471562", type: "product"},
+      {id: "p2", label: "product:4b967866", type: "product"},
+      {id: "o1", label: "order:73fa93bf", type: "order"},
+      {id: "cat", label: "category:beauty__tools", type: "category"},
     ],
     edges: [
       {from: "q", to: "r1", label: "bm25", type: "bm25"},
-      {from: "q", to: "r2", label: "bm25", type: "bm25"},
       {from: "o1", to: "r1", label: "has_review", type: "graph"},
       {from: "o1", to: "p1", label: "contains", type: "graph"},
       {from: "p1", to: "p2", label: "also_bought", type: "graph"},
+      {from: "p1", to: "cat", label: "belongs_to", type: "graph"},
     ],
   },
+  // Response 3: FAQ semantic search -> learned pattern
   {
     nodes: [
       {id: "q", label: "Query", type: "query"},
-      {id: "faq1", label: "Return Policy", type: "faq"},
-      {id: "faq2", label: "Shipping FAQ", type: "faq"},
-      {id: "lp", label: "Learned: use\nsemantic for FAQ", type: "learned"},
+      {id: "faq1", label: "doc:faq_12\nReturn Policy", type: "faq"},
+      {id: "faq2", label: "doc:faq_15\nShipping FAQ", type: "faq"},
+      {id: "lp", label: "learned_pattern:\nsemantic for FAQ", type: "learned"},
     ],
     edges: [
       {from: "q", to: "faq1", label: "vector", type: "vector"},
@@ -131,27 +137,27 @@ const MOCK_GRAPHS = [
 // Mock chat responses that showcase SurrealDB multi-model features
 const MOCK_RESPONSES = [
   {
-    reply: "I found some great options for you! Based on semantic search across our product database and graph traversal of co-purchase patterns, here are my top picks:\n\n1. **Clinique Moisture Surge Set** (\u00a332.02) \u2014 highly rated, customers who bought this also purchased the Bobbi Brown Face Base\n2. **The Ordinary Skin Support Set** (\u00a313.80) \u2014 great value, frequently bought with the Niacinamide Serum",
+    reply: "I found some great options for you! Based on hybrid search (vector + BM25) across our product documents and graph traversal of co-purchase patterns:\n\n1. **Clinique Moisture Surge Set** (\u00a358.59) \u2014 5-star rated, and via `also_bought` edge, customers who bought this also purchased the Resistance Band Set (weight=3)\n2. **The Ordinary Skin Support Set** (\u00a313.80) \u2014 great value starter set",
     tool_calls: [
-      {name: "hybrid_search", type: "bm25", args: "documents table | combined vector + BM25 | doc_type='product'"},
-      {name: "graph_traverse", type: "graph", args: "product:ce5b9184->also_bought->product WHERE weight > 2"},
-      {name: "keyword_search", type: "bm25", args: "documents table | BM25 'return policy' | doc_type='faq'"},
+      {name: "hybrid_search", type: "bm25", args: "documents | vector+BM25 RRF fusion | doc_type='product'"},
+      {name: "graph_traverse", type: "graph", args: "product:4fcb3d9a ->also_bought-> product (weight=3)"},
+      {name: "get_record", type: "relational", args: "product:728cfef9 | direct lookup by source_id"},
     ],
     learn: "hybrid_search works best for product recommendations"
   },
   {
-    reply: "Looking at our Beauty range! Here's what stands out based on ratings and what other customers in your segment bought:\n\n1. **Shark SilkiPro Straightener** (\u00a36.23) \u2014 top rated in Tools\n2. **L'Oreal Metal Detox Hair Mask** (\u00a328.90) \u2014 excellent reviews about repair quality\n\nI also checked customer reviews and the sentiment is overwhelmingly positive for both.",
+    reply: "Looking at our Beauty range! Here's what stands out based on ratings and co-purchase patterns:\n\n1. **Shark SilkiPro Straightener** (\u00a36.23) \u2014 5-star, top rated in Tools. Via `also_bought`: frequently bought with the Gua Sha\n2. **ESPA Bergamot Shower Gel** (\u00a348.96) \u2014 5-star, co-purchased with Konjac Sponge (weight=2)\n\nReviews via `order->has_review->review` show overwhelmingly positive sentiment.",
     tool_calls: [
-      {name: "keyword_search", type: "bm25", args: "documents table | BM25 'beauty tools quality'"},
-      {name: "graph_traverse", type: "graph", args: "review->has_review<-order->contains->product WHERE sentiment='positive'"},
+      {name: "keyword_search", type: "bm25", args: "documents | BM25 'beauty tools' | doc_type='product'"},
+      {name: "graph_traverse", type: "graph", args: "order:73fa93bf ->has_review-> review | ->contains-> product"},
       {name: "surrealql_query", type: "relational", args: "SELECT * FROM product WHERE vertical='Beauty' ORDER BY avg_rating DESC LIMIT 5"},
     ],
     learn: null
   },
   {
-    reply: "Great question! Based on our FAQ knowledge base and past patterns I've learned:\n\nYou can return any item within 30 days. Items must be unused and in original packaging. You'll get a prepaid returns label via email.\n\nI also found 3 related FAQ entries about shipping costs for returns.",
+    reply: "Great question! Based on semantic search over our FAQ documents (HNSW cosine similarity):\n\nYou can return any item within 30 days. Items must be unused and in original packaging. You'll get a prepaid returns label via email.\n\nI also found 3 related FAQ entries about shipping costs for returns.",
     tool_calls: [
-      {name: "semantic_search", type: "vector", args: "documents table | HNSW cosine | doc_type='faq' | query: 'return policy shipping'"},
+      {name: "semantic_search", type: "vector", args: "documents | HNSW cosine | doc_type='faq' | query='return policy'"},
       {name: "get_record", type: "relational", args: "learned_pattern:policy_routing | best_tool='semantic_search'"},
     ],
     learn: "semantic_search on faq works best for policy questions"

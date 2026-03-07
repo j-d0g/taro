@@ -23,8 +23,8 @@
       <input type="text" placeholder="Search products..." id="searchInput" />
     </div>
     <button class="profile-btn" id="profileBtn" onclick="toggleProfile()">
-      <span class="profile-avatar">C</span>
-      <span class="profile-name">Charlotte</span>
+      <span class="profile-avatar">D</span>
+      <span class="profile-name">Diego</span>
     </button>
   </div>
 </nav>
@@ -79,7 +79,7 @@
 <div class="profile-overlay" id="profileOverlay" onclick="toggleProfile()">
   <div class="profile-panel" onclick="event.stopPropagation()">
     <div class="profile-header">
-      <div class="profile-header-avatar">C</div>
+      <div class="profile-header-avatar">D</div>
       <div>
         <div class="profile-header-name" id="profileName"></div>
         <div class="profile-header-location" id="profileLocation"></div>
@@ -88,10 +88,10 @@
     </div>
     <div class="profile-stats" id="profileStats"></div>
     <h3 class="profile-section-title">Purchase History</h3>
-    <p class="profile-section-subtitle">via <code>customer->bought->product</code> graph edge</p>
+    <p class="profile-section-subtitle">via <code>customer->placed->order->contains->product</code></p>
     <div class="profile-purchases" id="profilePurchases"></div>
     <h3 class="profile-section-title">Recommended For You</h3>
-    <p class="profile-section-subtitle">via <code>->bought->product->also_bought->product</code></p>
+    <p class="profile-section-subtitle">via <code>product->also_bought->product</code> (co-purchase)</p>
     <div class="profile-recommendations" id="profileRecommendations"></div>
   </div>
 </div>

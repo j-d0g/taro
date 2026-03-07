@@ -1,6 +1,6 @@
 /**
  * profile.js — Customer profile panel showing purchase history and recommendations.
- * Data comes from the `bought` and `also_bought` graph edges in SurrealDB.
+ * Data comes from `placed->order->contains->product` and `also_bought` graph edges in SurrealDB.
  */
 
 let profileOpen = false;
@@ -22,16 +22,17 @@ function renderProfile() {
   document.getElementById('profileLocation').textContent =
     `${customer.city}, ${customer.state}`;
 
-  // Stats
-  const totalSpent = customer.purchases.reduce((s, p) => s + p.total_spent, 0);
-  const totalOrders = customer.purchases.reduce((s, p) => s + p.order_count, 0);
+  // Stats — derived from orders (placed->order->contains->product)
+  const allProductIds = customer.orders.flatMap(o => o.products);
+  const uniqueProductIds = [...new Set(allProductIds)];
+  const totalSpent = customer.orders.reduce((s, o) => s + o.price, 0);
   document.getElementById('profileStats').innerHTML = `
     <div class="profile-stat">
-      <div class="profile-stat-value">${customer.purchases.length}</div>
+      <div class="profile-stat-value">${uniqueProductIds.length}</div>
       <div class="profile-stat-label">Products</div>
     </div>
     <div class="profile-stat">
-      <div class="profile-stat-value">${totalOrders}</div>
+      <div class="profile-stat-value">${customer.orders.length}</div>
       <div class="profile-stat-label">Orders</div>
     </div>
     <div class="profile-stat">
@@ -40,39 +41,46 @@ function renderProfile() {
     </div>
   `;
 
-  // Purchase history
+  // Purchase history — models placed->order->contains->product
   const purchasesEl = document.getElementById('profilePurchases');
-  purchasesEl.innerHTML = customer.purchases.map(purchase => {
-    const product = MOCK_PRODUCTS.find(p => p.id === purchase.product_id);
-    if (!product) return '';
+  purchasesEl.innerHTML = customer.orders.map(order => {
+    const products = order.products.map(pid => MOCK_PRODUCTS.find(p => p.id === pid)).filter(Boolean);
+    if (!products.length) return '';
     return `
-      <div class="profile-purchase-card" onclick="toggleProfile(); openProductDetail('${product.id}')">
-        <div class="profile-purchase-img">
-          ${product.image_url
-            ? `<img src="${product.image_url}" alt="${product.name}"
-                 onerror="this.parentElement.innerHTML='&#128722;'" />`
-            : '&#128722;'}
-        </div>
-        <div class="profile-purchase-info">
-          <div class="profile-purchase-name">${product.name}</div>
-          <div class="profile-purchase-meta">
-            <span class="vertical-badge-sm ${product.vertical}">${product.vertical}</span>
-            ${product.subcategory}
-          </div>
+      <div class="profile-purchase-card">
+        <div class="profile-purchase-info" style="flex:1">
+          <div class="profile-purchase-name" style="font-size:11px;color:var(--text-dim)">Order ${order.order_id}</div>
+          ${products.map(product => `
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer" onclick="toggleProfile(); openProductDetail('${product.id}')">
+              <div class="profile-purchase-img" style="width:36px;height:36px;min-width:36px">
+                ${product.image_url
+                  ? `<img src="${product.image_url}" alt="${product.name}"
+                       onerror="this.parentElement.innerHTML='&#128722;'" />`
+                  : '&#128722;'}
+              </div>
+              <div>
+                <div class="profile-purchase-name">${product.name}</div>
+                <div class="profile-purchase-meta">
+                  <span class="vertical-badge-sm ${product.vertical}">${product.vertical}</span>
+                  ${product.subcategory}
+                </div>
+              </div>
+            </div>
+          `).join('')}
         </div>
         <div class="profile-purchase-right">
-          <div class="profile-purchase-price">\u00a3${purchase.total_spent.toFixed(2)}</div>
-          <div class="profile-purchase-count">${purchase.order_count}x ordered</div>
+          <div class="profile-purchase-price">\u00a3${order.price.toFixed(2)}</div>
+          <div class="profile-purchase-count">${order.products.length} item${order.products.length > 1 ? 's' : ''}</div>
         </div>
       </div>
     `;
   }).join('');
 
-  // Recommendations: collect also_bought from purchased products, exclude already-bought
-  const boughtIds = new Set(customer.purchases.map(p => p.product_id));
+  // Recommendations: placed->order->contains->product, then product->also_bought->product
+  const boughtIds = new Set(customer.orders.flatMap(o => o.products));
   const recIds = new Set();
-  customer.purchases.forEach(purchase => {
-    const related = MOCK_ALSO_BOUGHT[purchase.product_id] || [];
+  boughtIds.forEach(pid => {
+    const related = MOCK_ALSO_BOUGHT[pid] || [];
     related.forEach(rid => {
       if (!boughtIds.has(rid)) recIds.add(rid);
     });
@@ -97,7 +105,7 @@ function renderProfile() {
         </div>
         <div class="profile-rec-name">${product.name}</div>
         <div class="profile-rec-price">\u00a3${product.price.toFixed(2)}</div>
-        <div class="profile-rec-reason">Customers who bought similar items also bought this</div>
+        <div class="profile-rec-reason">via also_bought graph edge (co-purchase pattern)</div>
       </div>
     `;
   }).join('');
