@@ -1,0 +1,41 @@
+# Environment / Secrets
+.env
+*.env
+config/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# LangGraph
+.langgraph/
+
+# Node (taro-web)
+node_modules/
+.next/
+.langgraph_api/
