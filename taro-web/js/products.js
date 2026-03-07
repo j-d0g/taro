@@ -135,8 +135,12 @@ function openProductDetail(id) {
     alsoBoughtEl.innerHTML = '<span style="color:var(--text-dim);font-size:12px">No co-purchase data yet</span>';
   }
 
-  // Reviews
-  const reviews = MOCK_REVIEWS[id] || [];
+  // Reviews — find via order->has_review->review (reviews keyed by order_id)
+  // Look up which orders contain this product, then get their reviews
+  const relevantOrders = MOCK_CUSTOMER.orders
+    .filter(o => o.products.includes(id))
+    .map(o => o.order_id);
+  const reviews = relevantOrders.flatMap(oid => MOCK_REVIEWS[oid] || []);
   const reviewsEl = document.getElementById('modalReviews');
   if (reviews.length > 0) {
     reviewsEl.innerHTML = reviews.map(r => {
