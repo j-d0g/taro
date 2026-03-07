@@ -196,6 +196,7 @@ orders_merged = orders_trim[["order_id", "customer_id"]].merge(
 # ── Step 12: Filter reviews to only orders that survived the merge ──
 merged_order_ids = set(orders_merged["order_id"])
 reviews_trim = reviews_trim[reviews_trim["order_id"].isin(merged_order_ids)]
+payments_trim = payments_trim[payments_trim["order_id"].isin(merged_order_ids)]
 
 # ── Step 13: Slim down columns ───────────────────────────────────────
 customers_out = customers_trim[["customer_id", "customer_name", "customer_city", "customer_state"]]
