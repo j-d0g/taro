@@ -1,10 +1,10 @@
 """Seed script: populates SurrealDB from trimmed CSV/JSON datasets.
 
-Loads customers, products, orders, payments, reviews into SurrealDB with:
+Loads customers, products, orders, reviews into SurrealDB with:
 - Native record links (not string foreign keys)
 - Vector embeddings on product documents AND review comments
-- Derived graph edges: bought (customer→product), also_bought (product→product)
-- Category hierarchy: subcategory -child_of-> vertical
+- Derived graph edge: also_bought (product-product co-purchase)
+- 6 edges: placed, contains, has_review, also_bought, belongs_to, child_of
 
 Usage: python schema/seed.py
 """
@@ -60,39 +60,19 @@ def make_cat_id(name: str) -> str:
 
 # ── Derived graph edges ──────────────────────────────────────
 
-def derive_bought_edges(orders: list[dict]) -> dict[tuple[str, str], dict]:
-    """Aggregate orders into customer→product edges with total_spent + order_count."""
-    agg: dict[tuple[str, str], dict] = {}
-    for row in orders:
-        key = (row["customer_id"], row["product_id"])
-        if key not in agg:
-            agg[key] = {"total_spent": 0.0, "order_count": 0}
-        price = safe_float(row.get("price", "")) or 0.0
-        agg[key]["total_spent"] = round(agg[key]["total_spent"] + price, 2)
-        agg[key]["order_count"] += 1
-    return agg
-
-
-def derive_also_bought_edges(orders: list[dict]) -> dict[tuple[str, str], dict]:
-    """Find products co-purchased by the same customer. Returns product→product edges."""
-    # Build customer → set of products
+def derive_also_bought_edges(orders: list[dict]) -> dict[tuple[str, str], int]:
+    """Find products co-purchased by the same customer. Returns product->product edges with weight."""
     cust_products: dict[str, set[str]] = defaultdict(set)
     for row in orders:
         cust_products[row["customer_id"]].add(row["product_id"])
 
-    # For each customer with >1 product, create co-purchase pairs
-    co_purchase: dict[tuple[str, str], dict] = {}
-    for cid, products in cust_products.items():
+    co_purchase: dict[tuple[str, str], int] = {}
+    for _cid, products in cust_products.items():
         if len(products) < 2:
             continue
         for a, b in combinations(sorted(products), 2):
-            # Bidirectional — create both directions
             for pair in [(a, b), (b, a)]:
-                if pair not in co_purchase:
-                    co_purchase[pair] = {"weight": 0, "customers": []}
-                co_purchase[pair]["weight"] += 1
-                if len(co_purchase[pair]["customers"]) < 5:  # cap sample
-                    co_purchase[pair]["customers"].append(cid)
+                co_purchase[pair] = co_purchase.get(pair, 0) + 1
     return co_purchase
 
 
@@ -103,21 +83,17 @@ async def seed():
     customers_raw = read_csv("customers.csv")
     products_raw = read_csv("products.csv")
     orders_raw = read_csv("orders.csv")
-    payments_raw = read_csv("payments.csv")
     reviews_raw = read_csv("reviews.csv")
 
     print(f"  customers: {len(customers_raw)}")
     print(f"  products:  {len(products_raw)}")
     print(f"  orders:    {len(orders_raw)}")
-    print(f"  payments:  {len(payments_raw)}")
     print(f"  reviews:   {len(reviews_raw)}")
 
     # Pre-compute derived edges
     print("\nDeriving graph edges...")
-    bought_edges = derive_bought_edges(orders_raw)
     also_bought_edges = derive_also_bought_edges(orders_raw)
-    print(f"  bought edges (customer→product): {len(bought_edges)}")
-    print(f"  also_bought edges (product→product): {len(also_bought_edges)}")
+    print(f"  also_bought edges (product<->product): {len(also_bought_edges)}")
 
     print("\nConnecting to SurrealDB...")
     async with get_db() as db:
@@ -135,7 +111,7 @@ async def seed():
                     print(f"  Schema warning: {e}")
 
         # ── 1. Categories (vertical + subcategory hierarchy) ─
-        print("\n[1/9] Seeding categories...")
+        print("\n[1/7] Seeding categories...")
         verticals = set()
         subcats = set()
         for row in products_raw:
@@ -168,7 +144,7 @@ async def seed():
         print(f"  {len(verticals)} verticals, {len(subcats)} subcategories")
 
         # ── 2. Customers ─────────────────────────────────────
-        print("[2/9] Seeding customers...")
+        print("[2/7] Seeding customers...")
         for i in range(0, len(customers_raw), EMBED_BATCH):
             batch = customers_raw[i : i + EMBED_BATCH]
             for row in batch:
@@ -184,7 +160,7 @@ async def seed():
             print(f"  {min(i + EMBED_BATCH, len(customers_raw))}/{len(customers_raw)}")
 
         # ── 3. Products + belongs_to edges ───────────────────
-        print("[3/9] Seeding products...")
+        print("[3/7] Seeding products...")
         for i in range(0, len(products_raw), EMBED_BATCH):
             batch = products_raw[i : i + EMBED_BATCH]
             for row in batch:
@@ -214,8 +190,8 @@ async def seed():
 
             print(f"  {min(i + EMBED_BATCH, len(products_raw))}/{len(products_raw)}")
 
-        # ── 4. Orders + placed + contains edges ──────────────
-        print("[4/9] Seeding orders...")
+        # ── 4. Orders + contains edges ─────────────────────────
+        print("[4/7] Seeding orders...")
         seen_orders = set()
         for i in range(0, len(orders_raw), EMBED_BATCH):
             batch = orders_raw[i : i + EMBED_BATCH]
@@ -239,29 +215,8 @@ async def seed():
 
             print(f"  {min(i + EMBED_BATCH, len(orders_raw))}/{len(orders_raw)}")
 
-        # ── 5. Payments + paid_with edges ────────────────────
-        print("[5/9] Seeding payments...")
-        for i in range(0, len(payments_raw), EMBED_BATCH):
-            batch = payments_raw[i : i + EMBED_BATCH]
-            for row in batch:
-                oid = row["order_id"]
-                pay_id = f"{oid}_{row['payment_type']}"
-                await db.query(
-                    f"CREATE payment:`{pay_id}` SET "
-                    "payment_type = $ptype, installments = $inst, value = $val",
-                    {
-                        "ptype": row["payment_type"],
-                        "inst": safe_int(row.get("payment_installments", "")),
-                        "val": safe_float(row.get("payment_value", "")),
-                    },
-                )
-                # order -paid_with-> payment
-                await db.query(f"RELATE order:`{oid}`->paid_with->payment:`{pay_id}`")
-
-            print(f"  {min(i + EMBED_BATCH, len(payments_raw))}/{len(payments_raw)}")
-
-        # ── 6. Reviews + has_review edges + embeddings ───────
-        print("[6/9] Seeding reviews (with embeddings)...")
+        # ── 5. Reviews + has_review edges + embeddings ───────
+        print("[5/7] Seeding reviews (with embeddings)...")
         embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
         for i in range(0, len(reviews_raw), EMBED_BATCH):
@@ -299,34 +254,21 @@ async def seed():
 
             print(f"  {min(i + EMBED_BATCH, len(reviews_raw))}/{len(reviews_raw)}")
 
-        # ── 7. Derived: bought edges ─────────────────────────
-        print("[7/9] Creating bought edges (customer→product)...")
-        bought_items = list(bought_edges.items())
-        for i in range(0, len(bought_items), EMBED_BATCH):
-            batch = bought_items[i : i + EMBED_BATCH]
-            for (cid, pid), stats in batch:
-                await db.query(
-                    f"RELATE customer:`{cid}`->bought->product:`{pid}` "
-                    "SET total_spent = $spent, order_count = $cnt",
-                    {"spent": stats["total_spent"], "cnt": stats["order_count"]},
-                )
-            print(f"  {min(i + EMBED_BATCH, len(bought_items))}/{len(bought_items)}")
-
-        # ── 8. Derived: also_bought edges ────────────────────
-        print("[8/9] Creating also_bought edges (product→product)...")
+        # ── 6. Derived: also_bought edges ────────────────────
+        print("[6/7] Creating also_bought edges (product<->product)...")
         also_items = list(also_bought_edges.items())
         for i in range(0, len(also_items), EMBED_BATCH):
             batch = also_items[i : i + EMBED_BATCH]
-            for (pid_a, pid_b), stats in batch:
+            for (pid_a, pid_b), weight in batch:
                 await db.query(
                     f"RELATE product:`{pid_a}`->also_bought->product:`{pid_b}` "
-                    "SET weight = $w, customers = $custs",
-                    {"w": stats["weight"], "custs": stats["customers"]},
+                    "SET weight = $w",
+                    {"w": weight},
                 )
             print(f"  {min(i + EMBED_BATCH, len(also_items))}/{len(also_items)}")
 
-        # ── 9. Product + FAQ documents (vector + BM25) ───────
-        print("[9/9] Seeding documents with embeddings...")
+        # ── 7. Product + FAQ documents (vector + BM25) ───────
+        print("[7/7] Seeding documents with embeddings...")
 
         # Product documents
         print("  Product documents...")
@@ -413,17 +355,14 @@ async def seed():
         print(f"    {len(products_raw):>6} products")
         print(f"    {len(verticals) + len(subcats):>6} categories ({len(verticals)} verticals + {len(subcats)} subcategories)")
         print(f"    {len(set(r['order_id'] for r in orders_raw)):>6} orders")
-        print(f"    {len(payments_raw):>6} payments")
         print(f"    {len(reviews_raw):>6} reviews (with embeddings)")
-        print(f"  Edges:")
-        print(f"    placed:       customer → order")
-        print(f"    contains:     order → product")
-        print(f"    paid_with:    order → payment")
-        print(f"    has_review:   order → review")
-        print(f"    belongs_to:   product → category")
-        print(f"    child_of:     subcategory → vertical")
-        print(f"    bought:       {len(bought_edges):>6} customer → product (derived)")
-        print(f"    also_bought:  {len(also_bought_edges):>6} product → product (derived)")
+        print(f"  Edges (6):")
+        print(f"    placed:       customer -> order")
+        print(f"    contains:     order -> product")
+        print(f"    has_review:   order -> review")
+        print(f"    belongs_to:   product -> category")
+        print(f"    child_of:     subcategory -> vertical")
+        print(f"    also_bought:  {len(also_bought_edges):>6} product <-> product (derived)")
         print(f"  Documents:")
         print(f"    {len(products_raw):>6} product docs (vector + BM25)")
         faq_count = len(unique_faqs) if os.path.exists(FAQ_PATH) else 0
