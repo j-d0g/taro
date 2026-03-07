@@ -62,15 +62,6 @@ DEFINE FIELD price ON order TYPE option<float>;
 DEFINE FIELD created_at ON order TYPE datetime DEFAULT time::now();
 
 -- ============================================================
--- Payment
--- ============================================================
-DEFINE TABLE payment SCHEMAFULL;
-
-DEFINE FIELD payment_type ON payment TYPE string;
-DEFINE FIELD installments ON payment TYPE option<int>;
-DEFINE FIELD value ON payment TYPE option<float>;
-
--- ============================================================
 -- Review (with vector index for semantic search over comments)
 -- ============================================================
 DEFINE TABLE review SCHEMAFULL;
@@ -80,7 +71,6 @@ DEFINE FIELD comment ON review TYPE option<string>;
 DEFINE FIELD sentiment ON review TYPE option<string>;
 DEFINE FIELD embedding ON review TYPE option<array<float>>;
 
--- Vector index: "find reviews where people complained about X"
 DEFINE INDEX idx_review_embedding ON review FIELDS embedding
     HNSW DIMENSION 1536 DIST COSINE;
 
@@ -94,30 +84,26 @@ DEFINE FIELD level ON category TYPE string;                  -- "vertical" or "s
 DEFINE FIELD description ON category TYPE option<string>;
 
 -- ============================================================
--- Graph edges (RELATE)
+-- Graph edges (6 total)
 -- ============================================================
 
--- Core transactional edges
+-- customer -placed-> order (from orders.csv: customer_id + order_id)
 DEFINE TABLE placed SCHEMAFULL TYPE RELATION IN customer OUT order;
 
+-- order -contains-> product (from orders.csv: order_id + product_id)
 DEFINE TABLE contains SCHEMAFULL TYPE RELATION IN order OUT product;
 
-DEFINE TABLE paid_with SCHEMAFULL TYPE RELATION IN order OUT payment;
-
+-- order -has_review-> review (from reviews.csv: order_id + review_id)
 DEFINE TABLE has_review SCHEMAFULL TYPE RELATION IN order OUT review;
 
--- Derived shortcut: customer bought product (aggregated from orders)
-DEFINE TABLE bought SCHEMAFULL TYPE RELATION IN customer OUT product;
-DEFINE FIELD total_spent ON bought TYPE option<float>;
-DEFINE FIELD order_count ON bought TYPE option<int>;
-
--- Derived co-purchase: products bought by the same customer
+-- product -also_bought-> product (derived: co-purchased by same customer)
 DEFINE TABLE also_bought SCHEMAFULL TYPE RELATION IN product OUT product;
-DEFINE FIELD weight ON also_bought TYPE int DEFAULT 1;       -- number of customers who bought both
-DEFINE FIELD customers ON also_bought TYPE option<array>;    -- sample customer IDs
+DEFINE FIELD weight ON also_bought TYPE int DEFAULT 1;
 
--- Category hierarchy
+-- product -belongs_to-> category
 DEFINE TABLE belongs_to SCHEMAFULL TYPE RELATION IN product OUT category;
+
+-- category -child_of-> category (subcategory -> vertical)
 DEFINE TABLE child_of SCHEMAFULL TYPE RELATION IN category OUT category;
 
 -- ============================================================
