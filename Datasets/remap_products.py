@@ -337,12 +337,36 @@ products["subcategory"] = products["category_english"].apply(lambda c: map_categ
 # ── Step 4: Assign product names from pools ──────────────────────────
 
 # For each product, pick a name from its (vertical, subcategory) pool
-# If a pool runs out, cycle through it
+# Realistic variant suffixes by subcategory type
+VARIANT_SUFFIXES = {
+    # Fitness
+    ("Fitness", "Equipment"):   ["Black", "Grey", "Blue", "Red", "Green", "Navy", "White", "Orange", "Purple", "Camo"],
+    ("Fitness", "Tech"):        ["Black", "White", "Grey", "Navy", "Rose Gold", "Silver", "Midnight Blue", "Forest Green"],
+    ("Fitness", "Accessories"):  ["Black", "Navy", "Grey", "Pink", "Blue", "Red", "White", "Teal", "Coral", "Lime"],
+    ("Fitness", "Nutrition"):   ["Chocolate", "Vanilla", "Strawberry", "Peanut Butter", "Cookies & Cream", "Salted Caramel", "Berry", "Banana", "Mocha", "Unflavoured"],
+    ("Fitness", "Drinks"):      ["Tropical", "Berry", "Citrus", "Grape", "Watermelon", "Mango", "Lemon Lime", "Peach"],
+    # Beauty
+    ("Beauty", "Skincare"):     ["30ml", "50ml", "75ml", "100ml", "Travel Size", "Duo Pack", "Value Size 200ml", "Mini 15ml"],
+    ("Beauty", "Bath & Body"):  ["White", "Grey", "Blush Pink", "Sage Green", "Lavender", "Cream", "Charcoal", "Stone"],
+    ("Beauty", "Tools"):        ["Black", "Rose Gold", "White", "Pink", "Gold", "Silver", "Matte Black", "Pearl"],
+    ("Beauty", "Fragrance"):    ["Rose", "Vanilla", "Jasmine", "Citrus", "Sandalwood", "Lavender", "Oud", "Bergamot"],
+    ("Beauty", "Accessories"):  ["Rose Gold", "Gold", "Silver", "Pink", "Black", "Marble", "Blush", "Clear"],
+    ("Beauty", "Grooming"):     ["Sensitive", "Original", "Cool Mint", "Cedar", "Charcoal", "Unscented"],
+    ("Beauty", "Body Care"):    ["Coconut", "Shea Butter", "Aloe Vera", "Argan", "Cocoa Butter", "Vitamin E", "Rose Hip", "Lavender"],
+    # Wellness
+    ("Wellness", "Home Wellness"):  ["White", "Natural Wood", "Black", "Grey", "Bamboo", "Oak", "Walnut", "Mint"],
+    ("Wellness", "Lifestyle"):      ["Natural", "Sage Green", "Ocean Blue", "Charcoal", "Sand", "Coral", "Olive", "Oat"],
+    ("Wellness", "Gifts"):          ["Classic", "Premium", "Deluxe", "Essentials", "Starter", "Signature", "Ultimate", "Discovery"],
+    ("Wellness", "Mindfulness"):    ["Lavender", "Eucalyptus", "Sage", "Natural", "Navy", "Grey", "Charcoal", "Stone"],
+    ("Wellness", "Family Health"):  ["Strawberry", "Orange", "Berry", "Unflavoured", "Grape", "Tropical", "Cherry", "Lemon"],
+    ("Wellness", "Sleep"):          ["Lavender", "Chamomile", "Vanilla", "Unflavoured"],
+}
+
+# If a pool runs out, cycle through it with realistic suffixes
 def assign_names(group):
     key = (group["vertical"].iloc[0], group["subcategory"].iloc[0])
     pool = PRODUCT_NAMES.get(key)
     if pool is None:
-        # Find closest pool in same vertical
         vertical = key[0]
         for k, v in PRODUCT_NAMES.items():
             if k[0] == vertical:
@@ -351,16 +375,18 @@ def assign_names(group):
     if pool is None:
         pool = ["Wellness Product"]
 
+    suffixes = VARIANT_SUFFIXES.get(key, ["Classic", "Original", "Standard", "Premium", "Lite", "Pro", "Plus", "Max"])
+
     n = len(group)
-    # Cycle through pool, add variant suffix if needed
     names = []
     for i in range(n):
         base_name = pool[i % len(pool)]
         cycle = i // len(pool)
+        suffix = suffixes[cycle % len(suffixes)]
         if cycle == 0:
             names.append(base_name)
         else:
-            names.append(f"{base_name} (Variant {cycle + 1})")
+            names.append(f"{base_name} - {suffix}")
 
     # Shuffle so same-named products aren't consecutive
     rng = np.random.RandomState(hash(key[0] + key[1]) % 2**31)
