@@ -1,6 +1,10 @@
 """LangGraph ReAct agent with SurrealDB checkpointer."""
 
 import os
+import sys
+
+# Ensure src/ is on Python path (needed for LangGraph Studio which loads from project root)
+sys.path.insert(0, os.path.dirname(__file__))
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -54,8 +58,11 @@ def get_llm(provider: str = DEFAULT_PROVIDER, model: str = DEFAULT_MODEL, temper
     raise ValueError(f"Unsupported LLM provider: {provider}. Use 'openai', 'anthropic', or 'google'.")
 
 
-def build_graph(model_provider: str = None, model_name: str = None, temperature: float = None, prompt: str = None):
-    """Build the ReAct agent graph with SurrealDB checkpointer."""
+def build_graph(model_provider: str = None, model_name: str = None, temperature: float = None, prompt: str = None, use_checkpointer: bool = True):
+    """Build the ReAct agent graph with optional checkpointer.
+
+    When use_checkpointer=False, LangGraph Studio provides its own persistence.
+    """
     llm = get_llm(
         provider=model_provider or DEFAULT_PROVIDER,
         model=model_name or DEFAULT_MODEL,
@@ -63,9 +70,7 @@ def build_graph(model_provider: str = None, model_name: str = None, temperature:
     )
 
     # TODO: Switch to SurrealSaver when langgraph-checkpoint-surrealdb supports SurrealDB 3.0
-    # db_config = get_db_config()
-    # checkpointer = SurrealSaver(url=db_config["url"], ...)
-    checkpointer = MemorySaver()
+    checkpointer = MemorySaver() if use_checkpointer else None
 
     agent = create_react_agent(
         model=llm,
@@ -74,9 +79,12 @@ def build_graph(model_provider: str = None, model_name: str = None, temperature:
         checkpointer=checkpointer,
     )
 
-    logger.info(f"Built ReAct agent with {len(ALL_TOOLS)} tools and SurrealDB checkpointer")
+    logger.info(f"Built ReAct agent with {len(ALL_TOOLS)} tools (checkpointer={'enabled' if use_checkpointer else 'platform-managed'})")
     return agent
 
 
+# Detect if running under LangGraph Studio (it sets LANGGRAPH_API_URL or similar env vars)
+_is_studio = os.getenv("LANGGRAPH_STORE_URI") is not None or "langgraph_api" in sys.modules
+
 # Module-level graph for LangGraph Studio (uses env defaults)
-graph = build_graph()
+graph = build_graph(use_checkpointer=not _is_studio)
