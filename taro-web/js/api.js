@@ -71,7 +71,11 @@ async function fetchVerticals() {
 
 async function fetchCategories() {
   try {
-    return await apiFetch('/categories');
+    const verticals = await apiFetch('/categories');
+    // Flatten nested verticals into [{name, vertical}, ...] for subcategory chips
+    return verticals.flatMap(v =>
+      (v.subcategories || []).map(s => ({ id: s.id, name: s.name, vertical: v.name }))
+    );
   } catch (e) {
     console.warn('fetchCategories fallback to mock:', e.message);
     return Object.entries(MOCK_SUBCATEGORIES).flatMap(([vertical, subs]) =>

@@ -278,6 +278,10 @@ body {
 .vertical-badge.Fitness { background: rgba(0, 212, 170, 0.2); color: var(--success); }
 .vertical-badge.Beauty { background: rgba(255, 0, 160, 0.2); color: var(--magenta); }
 .vertical-badge.Wellness { background: rgba(150, 0, 255, 0.2); color: #c77dff; }
+.vertical-badge.Skincare { background: rgba(0, 212, 170, 0.2); color: var(--success); }
+.vertical-badge.Haircare { background: rgba(150, 0, 255, 0.2); color: #c77dff; }
+.vertical-badge.Body\ \&\ Fragrance,
+.vertical-badge[class*="Body"] { background: rgba(255, 0, 160, 0.2); color: var(--magenta); }
 
 /* ── Product Modal ────────────────────────────────── */
 .modal-overlay {
@@ -1079,6 +1083,10 @@ body {
 .vertical-badge-sm.Fitness { background: rgba(0, 212, 170, 0.2); color: var(--success); }
 .vertical-badge-sm.Beauty { background: rgba(255, 0, 160, 0.2); color: var(--magenta); }
 .vertical-badge-sm.Wellness { background: rgba(150, 0, 255, 0.2); color: #c77dff; }
+.vertical-badge-sm.Skincare { background: rgba(0, 212, 170, 0.2); color: var(--success); }
+.vertical-badge-sm.Haircare { background: rgba(150, 0, 255, 0.2); color: #c77dff; }
+.vertical-badge-sm.Body\ \&\ Fragrance,
+.vertical-badge-sm[class*="Body"] { background: rgba(255, 0, 160, 0.2); color: var(--magenta); }
 
 .profile-purchase-right { text-align: right; flex-shrink: 0; }
 

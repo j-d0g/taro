@@ -2,7 +2,35 @@
  * app.js — Main entry point. Wires everything together on DOMContentLoaded.
  */
 
+async function buildVerticalTabs() {
+  const bar = document.getElementById('filterBar');
+  const countEl = document.getElementById('productCount');
+  try {
+    const verticals = await fetchVerticals();
+    // Insert vertical buttons before the count span
+    verticals.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-tab';
+      btn.dataset.vertical = v;
+      btn.textContent = v;
+      bar.insertBefore(btn, countEl);
+    });
+  } catch (e) {
+    // Fallback: hardcoded tabs
+    ['Skincare', 'Haircare', 'Body & Fragrance'].forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-tab';
+      btn.dataset.vertical = v;
+      btn.textContent = v;
+      bar.insertBefore(btn, countEl);
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  // Build vertical filter tabs from API
+  await buildVerticalTabs();
+
   // Render initial product grid
   renderProducts();
 
