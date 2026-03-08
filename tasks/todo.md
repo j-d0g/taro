@@ -69,10 +69,220 @@ Tasks:
 - [ ] Raise questions/concerns about anything ambiguous or potentially broken
 - [ ] Keep docs minimal — no bloat, no redundancy between files
 
+### BUG: User/Customer Table Mismatch (blocks user context)
+**Priority**: Critical
+**Goal**: Fix the broken user lookup pipeline. The agent can't find users because `ls /users/` and chat context injection query the `user` table, but `seed.py` creates records in the `customer` table. This makes the entire personalization flow non-functional.
+
+**Root cause**: `fs_tools.py:_handle_list_users` queries `SELECT ... FROM user`, `main.py:122` queries `SELECT * FROM user:{user_id}`, but `seed.py:151` creates `CREATE customer:{cid}`. Table name mismatch throughout.
+
+Tasks:
+- [ ] Decide: unify on `customer` (matches e-commerce domain) or `user` (matches SurrealFS `/users/` metaphor). Recommendation: keep `customer` in DB, alias `/users/` routes to query `customer` table
+- [ ] Update `fs_tools.py`: all `_handle_list_users`, `_handle_show_user`, `_handle_list_user_orders` to query `customer` table
+- [ ] Update `main.py` chat context injection (line ~129) to query `customer` not `user`
+- [ ] Update `main.py` distill endpoint (line ~260) to read/write `customer` context field
+- [ ] Verify schema.surql defines `customer` with a `context` field for distillation
+- [ ] Update `explore_schema` output if it references `user` table
+- [ ] Test: `ls /users/` returns Charlotte Gong and other seeded customers
+- [ ] Test: chat with `user_id=charlotte_gong` injects her profile into the conversation
+- [ ] Test: distill endpoint updates `customer:charlotte_gong` context field
+
+### Next: User Context Injection at Chat Start
+**Priority**: High
+**Goal**: When a user starts a chat, dynamically inject their profile, purchase history, preferences, and graph position into the system prompt — so the agent knows who it's talking to from message #1. Currently the agent has to `ls /users/` and search manually every time.
+
+Tasks:
+- [ ] On chat request with `user_id`, query customer record + recent orders + review history
+- [ ] Traverse graph: `customer->placed->order->contains->product` to get purchase history
+- [ ] Traverse graph: `customer->placed->order->has_review->review` to get their review history
+- [ ] Build a structured context block: name, profile_type, experience_level, skin concerns, recent purchases, favourite categories, distilled context
+- [ ] Inject this as a system message prefix (not user message) so the agent sees it naturally
+- [ ] Include graph entry points: "To find more about this user, start from `customer:{id}`"
+- [ ] Test: agent should greet Charlotte by name and reference her purchase history without any tool calls
+
+### Next: Fix or Replace Graph Traversal Tool
+**Priority**: High
+**Goal**: The `graph_traverse` tool is currently confusing and low-value in practice. The agent uses it but the results don't meaningfully help answer user queries. Either make it genuinely useful (e.g., "customers who bought X also bought Y", ingredient safety chains, category drill-down) or remove it and let `surrealql_query` handle graph queries directly.
+
+Tasks:
+- [ ] Audit current graph_traverse usage in stress test logs — when does the agent call it, and does it actually help the response?
+- [ ] Identify the 3-4 graph traversal patterns that would genuinely improve recommendations: `also_bought`, `contains_ingredient->related_to`, `supports_goal`
+- [ ] Option A: Rewrite graph_traverse to focus on these high-value patterns with clear, useful output formatting
+- [ ] Option B: Remove graph_traverse entirely, add graph query examples to `surrealql_query` docstring
+- [ ] If keeping: make output human-readable ("Customers who bought [X] also bought: [Y], [Z]") not raw record dumps
+- [ ] If keeping: add to the system prompt's GATHER phase as an explicit recommendation step
+- [ ] Update frontend: hide raw graph traversal debug output, show only the natural language result
+- [ ] Re-run smoke test to verify no regression
+
+### Next: Evaluation Suite (DeepEval + LangSmith)
+**Priority**: High
+**Goal**: Add structured evaluation beyond the current stress test. The stress test checks pass/fail but doesn't measure quality dimensions like faithfulness, relevance, hallucination, or tool efficiency. Reference: `THG/chatbot` repo has a working DeepEval implementation.
+
+Tasks:
+- [ ] Review DeepEval implementation in `THG/chatbot` repo — extract patterns for metrics, test cases, dataset format
+- [ ] Decide architecture: DeepEval for offline eval (faithfulness, hallucination, answer relevance) + LangSmith for runtime tracing. They complement, not compete
+- [ ] Create `taro-api/tests/eval_suite.py` with DeepEval test cases derived from the 43 stress test queries
+- [ ] Add metrics: faithfulness (did it use tool results?), answer relevance (did it answer the question?), hallucination (did it invent products?), tool selection accuracy
+- [ ] Connect to LangSmith: ensure all chat traces are tagged with eval run IDs for correlation
+- [ ] Add `make eval` target that runs the evaluation suite and outputs a summary report
+- [ ] Compare eval scores across models (ties into multi-model optimisation task)
+- [ ] Store eval results in `tasks/eval-results.md` for tracking over time
+
+### Next: Observability & Self-Improvement Pipeline
+**Priority**: Medium
+**Goal**: Leverage LangSmith telemetry to create a feedback loop where the agent learns from past conversations. Batch-analyse chat logs to identify failure patterns, extract learned preferences, and feed them back into the system prompt or user context.
+
+Tasks:
+- [ ] Set up LangSmith dataset from production chat traces — export conversations with tool calls + outcomes
+- [ ] Build a batch analysis script: pull recent traces, classify by outcome (success/partial/fail), extract failure patterns
+- [ ] Create a `learned_patterns` table in SurrealDB: pattern, frequency, fix, source_trace_id
+- [ ] Build a self-improvement sub-agent: reads recent failures from LangSmith, proposes prompt/tool improvements, writes to `learned_patterns`
+- [ ] Option: give the main agent read access to `learned_patterns` via `ls /system/patterns/` route in fs_tools
+- [ ] Option: spawn a review sub-agent post-conversation that scores the interaction and logs insights
+- [ ] Add `failure_record` table: query, expected_behavior, actual_behavior, root_cause, resolution
+- [ ] Feed high-frequency patterns back into system prompt updates (manual review gate)
+- [ ] Add Makefile target: `make analyse` — runs batch analysis on last N traces
+
+### Next: Multi-Agent Architecture Review
+**Priority**: Medium
+**Goal**: Evaluate whether our single `create_react_agent` with 9 tools is the right architecture, or if we should decompose into specialised sub-agents (e.g., search agent, recommendation agent, profile agent) for better context efficiency and separation of concerns. Currently one agent carries all tools and all context.
+
+Tasks:
+- [ ] Audit current token usage per chat request via LangSmith — how much context is the single agent consuming?
+- [ ] Identify tool clusters that could be separate agents: (1) search/browse: ls, cat, find, grep, tree (2) recommend: graph_traverse, surrealql_query (3) external: web_search
+- [ ] Research LangGraph multi-agent patterns: supervisor, hierarchical, swarm — which fits our use case?
+- [ ] Prototype: split into a router agent + specialist sub-agents, compare quality and latency
+- [ ] Evaluate tradeoffs: simpler single agent vs faster/cheaper multi-agent with context isolation
+- [ ] Decision point: if single agent works well enough for demo, don't over-engineer. Document the finding either way
+- [ ] If adopting multi-agent: update system prompts, tool assignments, and chat endpoint to route appropriately
+
+### Next: Streaming + Visible Intermediate Reasoning
+**Priority**: High
+**Goal**: Make the agent feel *alive*. Stream responses via SSE so the user sees thinking steps, tool calls, and results in real-time — like watching Claude Code solve a problem. Currently the `/chat` endpoint blocks until the full response is ready, which kills the agentic feel. This is Phase 4 of `tasks/spec-agentic-reasoning.md`.
+
+**What the user should see** (per the spec):
+```
+🔍 Let me check your profile and purchase history...
+[cat /users/emma_chen] → Emma, combination skin, goals: clear skin
+💭 She's been getting breakouts — let me check her recent orders for possible causes...
+[ls /users/emma_chen/orders/] → 3 recent orders
+💭 Her last order had AHA/BHA — that's strong. Cross-referencing with her sensitivities...
+✅ Based on your history, here's what I'd suggest...
+```
+
+Tasks:
+- [ ] Add SSE streaming endpoint: `POST /chat/stream` returning `text/event-stream` with structured event types
+- [ ] Define SSE event types: `reasoning` (thinking bubbles), `tool_call` (tool name + args), `tool_result` (summarised output), `token` (response text tokens), `done` (final state)
+- [ ] Implement LangGraph callback handler or use `astream_events()` to emit intermediate steps between tool calls
+- [ ] Add stream-of-thought instructions to system prompt: agent should emit a short reasoning step (1-2 sentences) between each tool call explaining what it found and what it'll do next
+- [ ] Frontend: render SSE events as a live trace — thinking bubbles for `reasoning`, collapsible cards for `tool_call`/`tool_result`, streaming text for `token`
+- [ ] Frontend: tool call cards should show tool name + args in a compact format, with result expandable (not the raw JSON dump currently shown)
+- [ ] Frontend: hide or collapse the raw "Graph traversal / bm25 / vector / relational" debug badges — replace with the natural language reasoning trace
+- [ ] Keep the existing blocking `POST /chat` endpoint for backwards compatibility and stress testing
+- [ ] Test: visible reasoning stream renders in real-time for a multi-tool-call query
+- [ ] Target: 2-5 visible thinking steps per complex query, each referencing specific data from the previous tool call
+
+### BUG: Chat Product Card Modal Shows Empty/Boilerplate Data
+**Priority**: High
+**Goal**: Clicking a product card rendered inside a chat response opens the detail modal but shows no title, price, rating, etc. — just the boilerplate loading state or empty fields. Products in the main grid modal work fine.
+
+**Likely root cause**: The product `id` extracted from chat tool results may not match the format expected by `GET /products/{id}`. The extraction pipeline is:
+1. `main.py:184-186` — parses tool message JSON, calls `_str_id()` to strip `product:` prefix
+2. `chat.js:62` — renders card with `onclick="openProductDetail('${p.id}')"`
+3. `api.js:40` — calls `GET /products/${productId}`
+4. `main.py:346` — queries `SELECT * FROM product:\`${product_id}\``
+
+**Possible failure points**:
+- Tool results from `find`/`grep` may return `source_id` (a `documents` table ID) not `product` table ID — the `id` field maps to the wrong table
+- `_str_id()` may produce an ID that doesn't match any `product` record (e.g., if the tool returned a document hash, not a product key)
+- The API returns `{"error": "Product not found"}` which `fetchProductDetail` treats as valid data (no error check on response body)
+
+Tasks:
+- [ ] Reproduce: send a chat query that returns product recommendations, click a product card, inspect browser console for the API response
+- [ ] Check: does `p.id` in the chat product card match an actual product ID in SurrealDB? Compare with `GET /products` output
+- [ ] Fix: if IDs from tool results are `documents` table IDs, map them back to `product` table IDs via the `source_id` field
+- [ ] Fix: `fetchProductDetail` should check for `data.error` in the response and handle gracefully (show "product not found" in modal, not blank fields)
+- [ ] Test: click product cards in chat — modal should show full product details matching what the agent recommended
+
+### Next: Product Swipe Actions (Cart / Keep / Remove)
+**Priority**: High
+**Goal**: Add Tinder-style swipe actions to recommended product cards in chat. Each product card gets three actions: "Add to Cart" (love it), "Keep for Later" (neutral/interested), or "Remove" (not for me). These signals feed back into the conversation in real-time (so the agent refines its next recommendations) AND persist to the user's profile in SurrealDB (so future sessions learn from past preferences).
+
+**UX vision**: Product cards in chat get a subtle action bar (swipe on mobile, buttons on desktop):
+- **Cart** (green bag icon) — "I want this" → adds to a visible shopping cart sidebar/drawer
+- **Keep** (bookmark icon) — "Interesting, save it" → stays visible, dimmed/bookmarked
+- **Remove** (X icon) — "Not for me" → card fades out / collapses with a brief "Got it, noted" animation
+
+**Data flow**:
+1. User swipes/clicks → frontend sends `POST /preferences` with `{user_id, product_id, action: "cart"|"keep"|"remove", reason?: string}`
+2. Backend persists to SurrealDB:
+   - `cart`: `RELATE customer:{id}->wants->product:{id}` (new edge type)
+   - `keep`: `RELATE customer:{id}->interested_in->product:{id}` (new edge type)
+   - `remove`: `RELATE customer:{id}->rejected->product:{id} SET reason = $reason` (new edge type)
+3. Within the current chat session: inject a system message like "User rejected [product X] — avoid similar products. User added [product Y] to cart — they like this direction." This steers the agent's next recommendations without a new user message.
+4. On future sessions: load user's `wants`, `interested_in`, `rejected` edges during context injection so the agent knows their preferences from message #1.
+
+Tasks:
+- [ ] Design action bar component for chat product cards — compact, accessible, works on mobile (swipe gestures) and desktop (icon buttons)
+- [ ] Add three new graph edge types to schema: `wants` (customer->product), `interested_in` (customer->product), `rejected` (customer->product with optional `reason` field)
+- [ ] Create `POST /preferences` endpoint: accepts `{user_id, product_id, action, reason?}`, creates/removes appropriate graph edges
+- [ ] Frontend: on "Cart" action → add to a shopping cart component (floating badge with count, expandable drawer showing carted items)
+- [ ] Frontend: on "Keep" action → visually bookmark the card (subtle highlight/icon change), keep visible in chat
+- [ ] Frontend: on "Remove" action → fade out card with micro-animation, optionally prompt "What didn't you like?" for the `reason` field
+- [ ] Backend: after preference action, inject a context message into the current thread so the agent adapts immediately (e.g., append to conversation as a system message)
+- [ ] Update user context injection (chat start) to load `wants`, `interested_in`, `rejected` edges and present as "User's preferences: likes [X, Y], not interested in [Z]"
+- [ ] Update `graph_traverse` or agent tools: agent should be able to query `customer->rejected->product` to avoid recommending disliked items
+- [ ] Add `ls /users/{id}/preferences/` route to fs_tools showing cart, saved, and rejected products
+- [ ] Test: reject a product → next recommendation from agent avoids similar items
+- [ ] Test: add to cart → cart persists across page refresh (via API, not just localStorage)
+
+### Next: Conversation Persistence & History
+**Priority**: High
+**Goal**: The chatbot is effectively stateless. `MemorySaver` keeps conversation history in-memory only — lost on every server restart. `SurrealSaver` (the SurrealDB-backed LangGraph checkpointer) is disabled due to SurrealDB 3.0 incompatibility. The frontend generates a fresh `thread_id` per page load (`chat.js:6`), so even within a session, refreshing the page starts a blank conversation. We need durable conversation history stored in SurrealDB for: multi-turn chat continuity, referencing past conversations, feeding into the distill/memory pipeline, and analytics.
+
+**Current state** (from code audit):
+- `graph.py:73`: `checkpointer = MemorySaver()` — in-memory, lost on restart
+- `graph.py:19-20`: `SurrealSaver` commented out — incompatible with SurrealDB 3.0
+- `chat.js:6`: `let threadId = crypto.randomUUID()` — new thread per page load
+- `main.py:33`: `thread_id` defaults to random UUID if not provided
+- Distill endpoint (`main.py:239`) reads from checkpointer, but it's empty after restart
+
+**Needs research** — best approach TBD. Options to investigate:
+1. **Fix `langgraph-checkpoint-surrealdb`** for SurrealDB 3.0 — native LangGraph checkpointing persisted to SurrealDB. Cleanest if feasible.
+2. **Custom SurrealDB checkpointer** — implement the `BaseCheckpointSaver` interface ourselves against SurrealDB 3.0. More work but full control.
+3. **Hybrid: LangSmith tracing + SurrealDB storage** — LangSmith already captures full traces. Pull conversation logs from LangSmith API, persist summaries to SurrealDB. Less real-time but leverages existing infra.
+4. **Simple per-turn persistence** — after each chat turn, write the message + response to a `conversation` table in SurrealDB. No checkpointer needed, just append-only log. Simplest but doesn't give LangGraph native history.
+
+Tasks:
+- [ ] Research: check if `langgraph-checkpoint-surrealdb` has a SurrealDB 3.0 compatible release or open PR
+- [ ] Research: evaluate LangGraph's `BaseCheckpointSaver` interface — how much work to implement a custom SurrealDB 3.0 saver?
+- [ ] Research: can LangSmith traces be pulled via API to reconstruct conversation history? What's the latency?
+- [ ] Decide architecture: native checkpointer vs append-only conversation table vs LangSmith hybrid
+- [ ] Schema: design `conversation` table — thread_id, user_id, messages (array of {role, content, tool_calls, timestamp}), created_at, updated_at
+- [ ] Frontend: persist `thread_id` in localStorage so refreshing the page resumes the conversation
+- [ ] Frontend: add "New Chat" button that generates a fresh thread_id
+- [ ] Frontend: add conversation history sidebar — list past threads by date/first message, click to resume
+- [ ] Backend: on chat request, load conversation history from SurrealDB if thread_id exists
+- [ ] Backend: after each turn, persist the new messages to SurrealDB
+- [ ] Wire distill endpoint to read from persisted history (not just in-memory checkpointer)
+- [ ] Test: restart server, send a message with a previous thread_id — agent should have full context
+- [ ] Test: conversation history survives server restarts and page refreshes
+
+### P2: Expandable Chat — Copilot Mode
+**Priority**: P2
+**Goal**: Add a toggle to expand the chat panel from the current compact sidebar into a full half-page copilot view. The current chat bubble is cramped for longer conversations and product cards get squeezed. A copilot-style layout (like GitHub Copilot Chat or Cursor's side panel) would give more room for product cards, reasoning traces, and the shopping cart.
+
+Tasks:
+- [ ] Add an expand/collapse toggle button to the chat header (icon: expand arrows or sidebar icon)
+- [ ] Expanded mode: chat takes ~50% of the page width, product grid shrinks to the other 50% (CSS grid/flexbox transition)
+- [ ] Collapsed mode: returns to current floating chat bubble layout
+- [ ] Persist preference in localStorage so it remembers across page loads
+- [ ] Responsive: on mobile, expanded mode goes full-screen with a back button to return to the grid
+- [ ] Ensure product cards, tool trace cards, and swipe actions render well in the wider layout
+- [ ] Smooth CSS transition between modes (not a jarring jump)
+
 ### P2: Demo Polish
 - [ ] Self-improvement logging (learned_pattern + failure_record tables)
 - [ ] Analytics dashboard on tool usage patterns
-- [ ] Streaming responses (SSE from /chat endpoint)
 
 ### P3: Nice to Have
 - [ ] Upgrade openai/langchain packages to latest for full gpt-5.4 support
