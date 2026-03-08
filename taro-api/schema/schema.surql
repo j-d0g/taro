@@ -55,6 +55,16 @@ DEFINE TABLE customer SCHEMAFULL;
 DEFINE FIELD name ON customer TYPE option<string>;
 DEFINE FIELD city ON customer TYPE option<string>;
 DEFINE FIELD state ON customer TYPE option<string>;
+DEFINE FIELD skin_type ON customer TYPE option<string>;
+DEFINE FIELD hair_type ON customer TYPE option<string>;
+DEFINE FIELD concerns ON customer TYPE option<array<string>>;
+DEFINE FIELD preferences ON customer TYPE option<array<string>>;
+DEFINE FIELD allergies ON customer TYPE option<array<string>>;
+DEFINE FIELD age ON customer TYPE option<int>;
+DEFINE FIELD bio ON customer TYPE option<string>;
+DEFINE FIELD profile_type ON customer TYPE option<string>;
+DEFINE FIELD experience_level ON customer TYPE option<string>;
+DEFINE FIELD preferred_brands ON customer TYPE option<array<string>>;
 
 -- ============================================================
 -- Product (structured data for graph + direct queries)

@@ -86,6 +86,17 @@ async function fetchCategories(vertical = null) {
   }
 }
 
+async function fetchCustomerProfile(customerId) {
+  try {
+    const res = await fetch(`${API_BASE}/customers/${customerId}/profile`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('fetchCustomerProfile: API unavailable, using mock data:', err.message);
+    return typeof MOCK_CUSTOMER_PROFILE !== 'undefined' ? MOCK_CUSTOMER_PROFILE : null;
+  }
+}
+
 async function fetchCustomer(customerId) {
   try {
     const res = await fetch(`${API_BASE}/customers/${customerId}`);
