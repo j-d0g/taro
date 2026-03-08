@@ -32,7 +32,8 @@ Products remapped from 64 generic Olist categories into 3 verticals with 9 subca
 | customers.csv | 2,526 | customer_id, customer_name, customer_city, customer_state |
 | products.csv | 1,890 | product_id, product_name, vertical, subcategory, price, avg_rating, description, weight_g, image_url, product_url |
 | orders.csv | 6,862 | order_id, customer_id, product_id, price |
-| reviews.csv | 6,465 | review_id, order_id, review_score, review_comment_message, sentiment |
+| reviews.csv | 6,495 | review_id, order_id, review_score, review_comment_message, sentiment |
+| payments.csv | 6,591 | order_id, payment_type, payment_installments, payment_value |
 
 **Join keys:**
 - `customer_id` links customers <-> orders
