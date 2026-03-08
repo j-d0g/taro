@@ -48,8 +48,6 @@ async def get_db():
             await db.signin({
                 "username": SURREALDB_USER,
                 "password": SURREALDB_PASS,
-                "namespace": SURREALDB_NAMESPACE,
-                "database": SURREALDB_DATABASE,
             })
         await db.use(SURREALDB_NAMESPACE, SURREALDB_DATABASE)
         yield db
