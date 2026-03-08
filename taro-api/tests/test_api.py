@@ -107,11 +107,11 @@ def test_chat_request_shape(client):
 
 
 def test_get_customer(client):
-    """GET /customers/{id} returns user profile."""
+    """GET /customers/{id} returns customer profile."""
     mock = _mock_db({
-        "SELECT * FROM user": [
-            {"id": "user:sarah_v", "name": "Sarah V", "email": "sarah@test.com",
-             "profile_type": "fitness", "goals": ["muscle_gain"]}
+        "SELECT * FROM customer": [
+            {"id": "customer:sarah_v", "name": "Sarah V", "city": "London",
+             "state": "England"}
         ],
     })
     import main
@@ -121,12 +121,12 @@ def test_get_customer(client):
     data = response.json()
     assert data["id"] == "sarah_v"
     assert data["name"] == "Sarah V"
-    assert data["profile_type"] == "fitness"
+    assert data["city"] == "London"
 
 
 def test_get_customer_not_found(client):
-    """GET /customers/{id} returns error for missing user."""
-    mock = _mock_db({"SELECT * FROM user": []})
+    """GET /customers/{id} returns error for missing customer."""
+    mock = _mock_db({"SELECT * FROM customer": []})
     import main
     with patch.object(main, "get_db", mock):
         response = client.get("/customers/nonexistent")
@@ -138,8 +138,8 @@ def test_get_customer_not_found(client):
 def test_get_customer_orders(client):
     """GET /customers/{id}/orders returns orders with products."""
     mock = _mock_db({
-        "SELECT id FROM user": [{"id": "user:sarah_v"}],
-        "placed_by": [{"orders": [
+        "SELECT id FROM customer": [{"id": "customer:sarah_v"}],
+        "placed": [{"orders": [
             {"id": "order:o1", "total": 49.99, "status": "delivered", "order_date": "2025-01-15"},
         ]}],
         "contains": [{"products": [
@@ -160,7 +160,7 @@ def test_get_customer_orders(client):
 def test_get_customer_recommendations(client):
     """GET /customers/{id}/recommendations returns deduped recs."""
     mock = _mock_db({
-        "placed_by->order->contains": [{"bought": ["product:whey_1"]}],
+        "placed->order->contains": [{"bought": ["product:whey_1"]}],
         "also_bought": [{"recs": [
             {"id": "product:creatine_1", "name": "Creatine Mono", "price": 14.99, "avg_rating": 4.8},
         ]}],

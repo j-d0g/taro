@@ -34,11 +34,12 @@ async def semantic_search(query: str, doc_type: str = "", limit: int = 5) -> str
                 SELECT id, title, content, doc_type, source_id,
                        vector::similarity::cosine(embedding, $embedding) AS score
                 FROM documents
-                WHERE embedding <|{limit}|> $embedding {type_filter}
+                WHERE embedding != NONE {type_filter}
                 ORDER BY score DESC
+                LIMIT {limit}
             """
             result = await db.query(surql, params)
-            docs = result or []
+            docs = [d for d in (result or []) if isinstance(d, dict)]
 
             if not docs:
                 return f"No semantic results for: '{query}'"

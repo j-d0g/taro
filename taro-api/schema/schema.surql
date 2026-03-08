@@ -48,6 +48,15 @@ DEFINE FIELD context ON user TYPE option<string>;            -- LLM-readable sum
 DEFINE FIELD memory ON user TYPE option<array<string>>;      -- key facts for personalisation
 
 -- ============================================================
+-- Customer (from CSV dataset)
+-- ============================================================
+DEFINE TABLE customer SCHEMAFULL;
+
+DEFINE FIELD name ON customer TYPE option<string>;
+DEFINE FIELD city ON customer TYPE option<string>;
+DEFINE FIELD state ON customer TYPE option<string>;
+
+-- ============================================================
 -- Product (structured data for graph + direct queries)
 -- ============================================================
 DEFINE TABLE product SCHEMAFULL;
@@ -126,8 +135,8 @@ DEFINE FIELD common_in ON ingredient TYPE option<array<string>>; -- product type
 -- Graph edges (9 total)
 -- ============================================================
 
--- user -placed_by-> order
-DEFINE TABLE placed_by SCHEMAFULL TYPE RELATION IN user OUT order;
+-- customer -placed-> order
+DEFINE TABLE placed SCHEMAFULL TYPE RELATION IN customer OUT order;
 
 -- order -contains-> product
 DEFINE TABLE contains SCHEMAFULL TYPE RELATION IN order OUT product;
