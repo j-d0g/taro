@@ -6,6 +6,18 @@ let chatOpen = false;
 let threadId = crypto.randomUUID();
 let queryCount = 0;
 let learnedCount = 0;
+let copilotMode = localStorage.getItem('copilotMode') === 'true';
+
+function toggleCopilot() {
+  copilotMode = !copilotMode;
+  document.body.classList.toggle('copilot-active', copilotMode);
+  localStorage.setItem('copilotMode', copilotMode);
+  document.getElementById('chatExpand').innerHTML = copilotMode ? '&#8646;' : '&#8644;';
+}
+
+if (copilotMode) {
+  document.body.classList.add('copilot-active');
+}
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -113,27 +125,42 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
     }
   }
 
-  // Tool trace cards (SurrealDB multi-model visualization)
+  // Tool trace cards (collapsed by default, click to expand)
   if (toolCalls.length > 0) {
     const iconMap = {
-      vector:  '&#128269;',
-      graph:   '&#128760;',
-      bm25:    '&#128196;',
+      vector: '&#128269;',
+      graph: '&#128760;',
+      bm25: '&#128196;',
       relational: '&#9881;',
+      web: '&#127760;',
+    };
+    const labelMap = {
+      ls: 'Browse', cat: 'Read', find: 'Semantic search',
+      grep: 'Keyword search', tree: 'Hierarchy', explore_schema: 'Schema',
+      graph_traverse: 'Graph traversal', surrealql_query: 'SQL query',
+      web_search: 'Web search',
     };
 
     const traceDiv = document.createElement('div');
     traceDiv.className = 'tool-trace';
-    traceDiv.innerHTML = toolCalls.map(tc => `
-      <div class="tool-card" onclick="this.classList.toggle('expanded')">
-        <div class="tool-card-header">
-          <span class="tool-icon ${tc.type}">${iconMap[tc.type] || '&#9881;'}</span>
-          ${tc.name}
-          <span class="tool-label ${tc.type}">${tc.type}</span>
-        </div>
-        <div class="tool-card-detail">${escapeHtml(tc.args)}</div>
+    const summary = toolCalls.map(tc => labelMap[tc.name] || tc.name).join(', ');
+    traceDiv.innerHTML = `
+      <div class="tool-trace-summary" onclick="this.parentElement.classList.toggle('expanded')">
+        &#9881; ${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}: ${summary}
       </div>
-    `).join('');
+      <div class="tool-trace-details">
+        ${toolCalls.map(tc => `
+          <div class="tool-card">
+            <div class="tool-card-header">
+              <span class="tool-icon ${tc.type}">${iconMap[tc.type] || '&#9881;'}</span>
+              ${labelMap[tc.name] || tc.name}
+              <span class="tool-label ${tc.type}">${tc.type}</span>
+            </div>
+            <div class="tool-card-detail"><pre>${escapeHtml(tc.args)}</pre></div>
+          </div>
+        `).join('')}
+      </div>
+    `;
     msgDiv.appendChild(traceDiv);
   }
 

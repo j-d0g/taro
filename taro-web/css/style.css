@@ -1861,6 +1861,54 @@ body {
   .product-price { font-size: 16px; }
 }
 
+/* ── Copilot mode ───────────────────────────────────── */
+.chat-header-controls { display: flex; gap: 4px; align-items: center; }
+
+.chat-expand {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.chat-expand:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+body.copilot-active .chat-panel.open {
+  width: 50vw;
+  height: 100vh;
+  bottom: 0;
+  right: 0;
+  border-radius: 0;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+}
+
+body.copilot-active .main-content {
+  margin-right: 50vw;
+  transition: margin-right 0.3s ease;
+}
+
+body.copilot-active .filter-bar,
+body.copilot-active .subcategory-bar {
+  margin-right: 50vw;
+  transition: margin-right 0.3s ease;
+}
+
+body.copilot-active .chat-bubble { display: none; }
+
+@media (max-width: 768px) {
+  body.copilot-active .chat-panel.open {
+    width: 100vw;
+  }
+  body.copilot-active .main-content,
+  body.copilot-active .filter-bar,
+  body.copilot-active .subcategory-bar {
+    display: none;
+  }
+}
+
 /* ── Pagination ───────────────────────────────────────── */
 .pagination {
   display: flex;
