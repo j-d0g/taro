@@ -1570,13 +1570,10 @@ body {
 
 .chat-product-card {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 8px 10px;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -1640,6 +1637,43 @@ body {
 .chat-product-rating {
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* ── Product preference actions ─────────────────────── */
+.chat-product-main { cursor: pointer; display: flex; gap: 10px; align-items: center; padding: 8px 10px; }
+
+.chat-product-actions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+}
+
+.pref-btn {
+  flex: 1;
+  padding: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.pref-btn:hover { opacity: 1; }
+.pref-btn:disabled { opacity: 0.3; cursor: default; }
+
+.pref-cart:hover { background: rgba(74, 157, 91, 0.1); }
+.pref-keep:hover { background: rgba(200, 170, 100, 0.1); }
+.pref-remove:hover { background: rgba(200, 80, 80, 0.1); }
+
+.chat-product-card.pref-carted { border-left: 3px solid var(--success); }
+.chat-product-card.pref-saved { border-left: 3px solid var(--warning); }
+.chat-product-card.pref-removed {
+  opacity: 0;
+  transform: translateX(20px);
+  transition: all 0.3s ease;
 }
 
 /* ── Profile Bio ──────────────────────────────────── */

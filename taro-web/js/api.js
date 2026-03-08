@@ -238,6 +238,30 @@ async function sendChatMessageStream(message, threadId, onEvent) {
   }
 }
 
+// ── Preference endpoint ───────────────────────────────
+
+async function sendPreference(productId, action, reason = null) {
+  const userId = typeof DEMO_CUSTOMER_ID !== 'undefined' ? DEMO_CUSTOMER_ID : null;
+  if (!userId) {
+    console.warn('sendPreference: no user ID');
+    return null;
+  }
+  try {
+    const body = { user_id: userId, product_id: productId, action };
+    if (reason) body.reason = reason;
+    const res = await fetch(`${API_BASE}/preferences`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('sendPreference failed:', err.message);
+    return null;
+  }
+}
+
 // ── Health check ───────────────────────────────────────
 
 async function checkApiHealth() {

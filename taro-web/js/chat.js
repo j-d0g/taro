@@ -71,25 +71,67 @@ function renderChatProductCards(products) {
     const rating = p.avg_rating || 0;
     const stars = '\u2605'.repeat(Math.round(rating)) + '\u2606'.repeat(5 - Math.round(rating));
     return `
-      <div class="chat-product-card" onclick="openProductDetail('${p.id}')">
-        <div class="chat-product-img">
-          ${p.image_url
-            ? `<img src="${p.image_url}" alt="${escapeHtml(p.name)}"
-                 onerror="this.parentElement.innerHTML='&#128722;'" />`
-            : '&#128722;'}
-        </div>
-        <div class="chat-product-info">
-          <div class="chat-product-name">${escapeHtml(p.name)}</div>
-          <div class="chat-product-meta">
-            <span class="chat-product-price">\u00a3${(p.price || 0).toFixed(2)}</span>
-            <span class="chat-product-rating"><span style="color:var(--warning)">${stars}</span> ${rating.toFixed(1)}</span>
+      <div class="chat-product-card" id="chat-product-${p.id}" data-product-id="${p.id}">
+        <div class="chat-product-main" onclick="openProductDetail('${p.id}')">
+          <div class="chat-product-img">
+            ${p.image_url
+              ? `<img src="${p.image_url}" alt="${escapeHtml(p.name)}"
+                   onerror="this.parentElement.innerHTML='&#128722;'" />`
+              : '&#128722;'}
           </div>
+          <div class="chat-product-info">
+            <div class="chat-product-name">${escapeHtml(p.name)}</div>
+            <div class="chat-product-meta">
+              <span class="chat-product-price">\u00a3${(p.price || 0).toFixed(2)}</span>
+              <span class="chat-product-rating"><span style="color:var(--warning)">${stars}</span> ${rating.toFixed(1)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="chat-product-actions">
+          <button class="pref-btn pref-cart" title="Add to cart" onclick="handlePreference('${p.id}', 'cart', this)">
+            &#128722;
+          </button>
+          <button class="pref-btn pref-keep" title="Save for later" onclick="handlePreference('${p.id}', 'keep', this)">
+            &#128278;
+          </button>
+          <button class="pref-btn pref-remove" title="Not interested" onclick="handlePreference('${p.id}', 'remove', this)">
+            &#10005;
+          </button>
         </div>
       </div>
     `;
   }).join('');
 
   return `<div class="chat-product-cards">${cards}</div>`;
+}
+
+async function handlePreference(productId, action, btnEl) {
+  const card = document.getElementById(`chat-product-${productId}`);
+  if (!card) return;
+
+  // Visual feedback immediately
+  if (action === 'cart') {
+    card.classList.add('pref-carted');
+    btnEl.innerHTML = '&#10003;';
+  } else if (action === 'keep') {
+    card.classList.add('pref-saved');
+    btnEl.innerHTML = '&#10003;';
+  } else if (action === 'remove') {
+    card.classList.add('pref-removed');
+    setTimeout(() => card.style.display = 'none', 300);
+  }
+
+  // Disable all action buttons on this card
+  card.querySelectorAll('.pref-btn').forEach(b => b.disabled = true);
+
+  // Send to backend
+  const result = await sendPreference(productId, action);
+  if (!result || !result.success) {
+    // Revert on failure
+    card.className = 'chat-product-card';
+    card.style.display = '';
+    card.querySelectorAll('.pref-btn').forEach(b => b.disabled = false);
+  }
 }
 
 // ── Add message to chat ────────────────────────────────
