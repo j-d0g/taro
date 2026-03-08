@@ -1216,6 +1216,12 @@ body {
   border-radius: 50%;
 }
 
+/* ── Loading skeleton pulse ───────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
+}
+
 /* ── Responsive ───────────────────────────────────── */
 @media (max-width: 768px) {
   .navbar { padding: 12px 16px; }
