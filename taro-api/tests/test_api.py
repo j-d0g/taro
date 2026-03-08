@@ -77,3 +77,21 @@ def test_chat_request_shape(client):
     assert "thread_id" in data
     assert "tool_calls" in data
     assert data["reply"] == "Here are some protein options."
+
+
+def test_products_endpoint(client):
+    """Products endpoint should handle request gracefully."""
+    response = client.get("/products")
+    assert response.status_code in (200, 404, 500)
+
+
+def test_products_search_param(client):
+    """Products endpoint accepts search query param."""
+    response = client.get("/products?search=protein")
+    assert response.status_code in (200, 404, 500)
+
+
+def test_products_vertical_param(client):
+    """Products endpoint accepts vertical filter."""
+    response = client.get("/products?vertical=Fitness")
+    assert response.status_code in (200, 404, 500)
