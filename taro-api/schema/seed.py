@@ -1,13 +1,9 @@
-"""Seed script: populates SurrealDB with mock dataset for Taro.ai hackathon.
+"""Seed script: populates SurrealDB with scraped lookfantastic dataset + enrichment.
 
-Seeds rich mock data including:
-- 15 user personas with preferences, context, and memory
-- ~130 products across Beauty/Fitness/Wellness verticals
-- 38 orders with coherent purchase patterns
-- 38 reviews with realistic comments and sentiment
-- 9 goals, 20 ingredients with product mappings
-- 9 graph edge types connecting everything
-- Product + FAQ documents with vector embeddings
+Data sources:
+- Products, customers, orders, reviews: Datasets/trimmed/ CSVs (1,890 scraped products)
+- Goals, ingredients, user personas: schema/mock_data.py (curated enrichment)
+- FAQs: Datasets/bitext_faq.csv (26K Q&A pairs, deduplicated by intent)
 
 Usage: python schema/seed.py
 """
@@ -28,23 +24,32 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "config", ".env"))
 
 from db import get_db
 
-# Import mock data
+# Import enrichment data (goals, ingredients, user personas)
 sys.path.insert(0, os.path.dirname(__file__))
 from mock_data import (
     GOALS,
     INGREDIENTS,
-    ORDERS,
-    ORDER_PRODUCT_FIXUPS,
-    PRODUCT_GOAL_EDGES,
-    PRODUCT_INGREDIENT_EDGES,
-    PRODUCTS,
-    RELATED_PRODUCTS,
-    REVIEWS,
-    USERS,
 )
 
+# ── CSV paths ──────────────────────────────────────────────────
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "Datasets", "trimmed")
 FAQ_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "Datasets", "bitext_faq.csv")
 EMBED_BATCH = 100
+
+
+def safe_float(val: str) -> float | None:
+    """Convert string to float, return None on failure."""
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
+
+
+def load_csv(filename: str) -> list[dict]:
+    """Load a CSV file from the trimmed data directory."""
+    path = os.path.join(DATA_DIR, filename)
+    with open(path, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
 
 
 def make_cat_id(name: str) -> str:
@@ -53,13 +58,19 @@ def make_cat_id(name: str) -> str:
 
 
 async def seed():
-    print("Loading mock data...")
-    print(f"  users:       {len(USERS)}")
-    print(f"  products:    {len(PRODUCTS)}")
-    print(f"  orders:      {len(ORDERS)}")
-    print(f"  reviews:     {len(REVIEWS)}")
-    print(f"  goals:       {len(GOALS)}")
-    print(f"  ingredients: {len(INGREDIENTS)}")
+    # ── Load CSV data ──────────────────────────────────────────
+    print("Loading CSV data...")
+    products_raw = load_csv("products.csv")
+    customers_raw = load_csv("customers.csv")
+    orders_raw = load_csv("orders.csv")
+    reviews_raw = load_csv("reviews.csv")
+
+    print(f"  products:    {len(products_raw)}")
+    print(f"  customers:   {len(customers_raw)}")
+    print(f"  orders:      {len(orders_raw)}")
+    print(f"  reviews:     {len(reviews_raw)}")
+    print(f"  goals:       {len(GOALS)} (enrichment)")
+    print(f"  ingredients: {len(INGREDIENTS)} (enrichment)")
 
     print("\nConnecting to SurrealDB...")
     async with get_db() as db:
@@ -76,11 +87,11 @@ async def seed():
                 except Exception as e:
                     print(f"  Schema warning: {e}")
 
-        # ── 1. Categories ────────────────────────────────────
-        print("\n[1/10] Seeding categories...")
+        # ── 1. Categories (derived from products) ─────────────
+        print("\n[1/9] Seeding categories...")
         verticals = set()
         subcats = set()
-        for p in PRODUCTS:
+        for p in products_raw:
             v = p.get("vertical", "")
             s = p.get("subcategory", "")
             if v:
@@ -106,8 +117,8 @@ async def seed():
 
         print(f"  {len(verticals)} verticals, {len(subcats)} subcategories")
 
-        # ── 2. Goals ─────────────────────────────────────────
-        print("[2/10] Seeding goals...")
+        # ── 2. Goals + Ingredients (enrichment) ────────────────
+        print("[2/9] Seeding goals...")
         for g in GOALS:
             await db.query(
                 f"CREATE goal:`{g['id']}` SET name = $name, description = $desc, vertical = $vertical",
@@ -115,8 +126,7 @@ async def seed():
             )
         print(f"  {len(GOALS)} goals")
 
-        # ── 3. Ingredients ───────────────────────────────────
-        print("[3/10] Seeding ingredients...")
+        print("[3/9] Seeding ingredients...")
         for ing in INGREDIENTS:
             await db.query(
                 f"CREATE ingredient:`{ing['id']}` SET name = $name, role = $role, "
@@ -131,98 +141,90 @@ async def seed():
             )
         print(f"  {len(INGREDIENTS)} ingredients")
 
-        # ── 4. Users ─────────────────────────────────────────
-        print("[4/10] Seeding users...")
-        for u in USERS:
-            await db.query(
-                f"CREATE user:`{u['id']}` SET "
-                "name = $name, email = $email, city = $city, age = $age, "
-                "profile_type = $profile_type, experience_level = $exp_level, "
-                "goals = $goals, dietary_restrictions = $dietary, "
-                "preferred_brands = $brands, skin_type = $skin_type, "
-                "context = $context, memory = $memory",
-                {
-                    "name": u["name"],
-                    "email": u.get("email"),
-                    "city": u.get("city"),
-                    "age": u.get("age"),
-                    "profile_type": u.get("profile_type"),
-                    "exp_level": u.get("experience_level"),
-                    "goals": u.get("goals", []),
-                    "dietary": u.get("dietary_restrictions", []),
-                    "brands": u.get("preferred_brands", []),
-                    "skin_type": u.get("skin_type"),
-                    "context": u.get("context"),
-                    "memory": u.get("memory", []),
-                },
-            )
-        print(f"  {len(USERS)} users")
+        # ── 3. Customers ──────────────────────────────────────
+        print("[4/9] Seeding customers...")
+        for i in range(0, len(customers_raw), EMBED_BATCH):
+            batch = customers_raw[i : i + EMBED_BATCH]
+            for row in batch:
+                cid = row["customer_id"]
+                await db.query(
+                    f"CREATE customer:`{cid}` SET "
+                    "name = $name, city = $city, state = $state",
+                    {
+                        "name": row.get("customer_name") or None,
+                        "city": row.get("customer_city") or None,
+                        "state": row.get("customer_state") or None,
+                    },
+                )
+            print(f"  {min(i + EMBED_BATCH, len(customers_raw))}/{len(customers_raw)}")
 
-        # ── 5. Products + belongs_to ─────────────────────────
-        print("[5/10] Seeding products...")
-        for p in PRODUCTS:
-            pid = p["id"]
-            await db.query(
-                f"CREATE product:`{pid}` SET "
-                "name = $name, vertical = $vertical, subcategory = $subcat, "
-                "category = $subcat, price = $price, avg_rating = $rating, "
-                "description = $desc, brand = $brand, ingredients = $ingredients, "
-                "tags = $tags, dietary_tags = $dietary_tags, "
-                "weight_g = $weight, image_url = $image_url",
-                {
-                    "name": p["name"],
-                    "vertical": p.get("vertical"),
-                    "subcat": p.get("subcategory"),
-                    "price": p.get("price"),
-                    "rating": p.get("avg_rating"),
-                    "desc": p.get("description"),
-                    "brand": p.get("brand"),
-                    "ingredients": p.get("ingredients", []),
-                    "tags": p.get("tags", []),
-                    "dietary_tags": p.get("dietary_tags", []),
-                    "weight": p.get("weight_g"),
-                    "image_url": p.get("image_url", ""),
-                },
-            )
-            subcat = p.get("subcategory", "")
-            vertical = p.get("vertical", "")
-            if subcat and vertical:
-                sid = make_cat_id(f"{vertical}__{subcat}")
-                await db.query(f"RELATE product:`{pid}`->belongs_to->category:`{sid}`")
+        # ── 4. Products + belongs_to ──────────────────────────
+        print("[5/9] Seeding products...")
+        product_ids = set()
+        for i in range(0, len(products_raw), EMBED_BATCH):
+            batch = products_raw[i : i + EMBED_BATCH]
+            for row in batch:
+                pid = row["product_id"]
+                product_ids.add(pid)
+                await db.query(
+                    f"CREATE product:`{pid}` SET "
+                    "name = $name, vertical = $vertical, subcategory = $subcat, "
+                    "price = $price, avg_rating = $rating, description = $desc, "
+                    "weight_g = $weight, image_url = $image_url, product_url = $product_url",
+                    {
+                        "name": row["product_name"],
+                        "vertical": row.get("vertical") or None,
+                        "subcat": row.get("subcategory") or None,
+                        "price": safe_float(row.get("price", "")),
+                        "rating": safe_float(row.get("avg_rating", "")),
+                        "desc": row.get("description") or None,
+                        "weight": safe_float(row.get("weight_g", "")),
+                        "image_url": row.get("image_url") or None,
+                        "product_url": row.get("product_url") or None,
+                    },
+                )
+                # product -belongs_to-> subcategory
+                subcat = row.get("subcategory", "")
+                vertical = row.get("vertical", "")
+                if subcat and vertical:
+                    sid = make_cat_id(f"{vertical}__{subcat}")
+                    await db.query(f"RELATE product:`{pid}`->belongs_to->category:`{sid}`")
+            print(f"  {min(i + EMBED_BATCH, len(products_raw))}/{len(products_raw)}")
 
-        print(f"  {len(PRODUCTS)} products")
+        # ── 5. Orders + placed + contains ─────────────────────
+        print("[6/9] Seeding orders...")
+        customer_products: dict[str, set[str]] = defaultdict(set)
+        for i in range(0, len(orders_raw), EMBED_BATCH):
+            batch = orders_raw[i : i + EMBED_BATCH]
+            for row in batch:
+                oid = row["order_id"]
+                cid = row["customer_id"]
+                pid = row["product_id"]
 
-        # ── 6. Orders + placed_by + contains ─────────────────
-        print("[6/10] Seeding orders...")
-        for o in ORDERS:
-            oid = o["id"]
-            uid = o["user_id"]
-            await db.query(
-                f"CREATE order:`{oid}` SET total = $total, price = $total, "
-                "status = $status, order_date = $order_date, currency = 'GBP'",
-                {
-                    "total": o.get("total"),
-                    "status": o.get("status", "delivered"),
-                    "order_date": o.get("order_date"),
-                },
-            )
-            # user -placed_by-> order
-            await db.query(f"RELATE user:`{uid}`->placed_by->order:`{oid}`")
-            # order -contains-> product
-            for pid in o.get("products", []):
-                # Apply fixups for any product ID mismatches
-                pid = ORDER_PRODUCT_FIXUPS.get(pid, pid)
+                # Skip orders referencing missing products
+                if pid not in product_ids:
+                    continue
+
+                await db.query(
+                    f"CREATE order:`{oid}` SET price = $price, status = 'delivered', currency = 'GBP'",
+                    {"price": safe_float(row.get("price", ""))},
+                )
+                # customer -placed-> order
+                await db.query(f"RELATE customer:`{cid}`->placed->order:`{oid}`")
+                # order -contains-> product
                 await db.query(f"RELATE order:`{oid}`->contains->product:`{pid}`")
+                # Track for also_bought
+                customer_products[cid].add(pid)
+            print(f"  {min(i + EMBED_BATCH, len(orders_raw))}/{len(orders_raw)}")
 
-        print(f"  {len(ORDERS)} orders")
-
-        # ── 7. Reviews + has_review + embeddings ─────────────
-        print("[7/10] Seeding reviews (with embeddings)...")
+        # ── 6. Reviews + has_review ───────────────────────────
+        print("[7/9] Seeding reviews...")
+        order_ids_in_db = set(row["order_id"] for row in orders_raw)
         embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-        for i in range(0, len(REVIEWS), EMBED_BATCH):
-            batch = REVIEWS[i : i + EMBED_BATCH]
-            texts = [r.get("comment", "") or "" for r in batch]
+        for i in range(0, len(reviews_raw), EMBED_BATCH):
+            batch = reviews_raw[i : i + EMBED_BATCH]
+            texts = [r.get("review_comment_message", "") or "" for r in batch]
             non_empty = [(j, t) for j, t in enumerate(texts) if t.strip()]
 
             vecs = {}
@@ -232,65 +234,34 @@ async def seed():
                     vecs[j] = vec
 
             for j, r in enumerate(batch):
-                rid = r["id"]
+                rid = r["review_id"]
                 oid = r["order_id"]
+                if oid not in order_ids_in_db:
+                    continue
                 vec = vecs.get(j)
+                score = int(r.get("review_score", 0) or 0)
                 await db.query(
                     f"CREATE review:`{rid}` SET "
                     "score = $score, comment = $comment, sentiment = $sentiment, "
                     "embedding = $embedding",
                     {
-                        "score": r.get("score", 0),
-                        "comment": r.get("comment"),
-                        "sentiment": r.get("sentiment"),
+                        "score": score,
+                        "comment": r.get("review_comment_message") or None,
+                        "sentiment": r.get("sentiment") or None,
                         "embedding": vec,
                     },
                 )
                 await db.query(f"RELATE order:`{oid}`->has_review->review:`{rid}`")
 
-            print(f"  {min(i + EMBED_BATCH, len(REVIEWS))}/{len(REVIEWS)}")
+            print(f"  {min(i + EMBED_BATCH, len(reviews_raw))}/{len(reviews_raw)}")
 
-        # ── 8. Graph edges: supports_goal, contains_ingredient, related_to, also_bought ──
-        print("[8/10] Seeding graph edges...")
-
-        # supports_goal: product -> goal
-        for pid, gid in PRODUCT_GOAL_EDGES:
-            await db.query(f"RELATE product:`{pid}`->supports_goal->goal:`{gid}`")
-        print(f"  {len(PRODUCT_GOAL_EDGES)} supports_goal edges")
-
-        # contains_ingredient: product -> ingredient
-        for pid, iid, conc in PRODUCT_INGREDIENT_EDGES:
-            await db.query(
-                f"RELATE product:`{pid}`->contains_ingredient->ingredient:`{iid}` "
-                "SET concentration = $conc",
-                {"conc": conc},
-            )
-        print(f"  {len(PRODUCT_INGREDIENT_EDGES)} contains_ingredient edges")
-
-        # related_to: product <-> product (bidirectional)
-        for pid_a, pid_b, reason in RELATED_PRODUCTS:
-            await db.query(
-                f"RELATE product:`{pid_a}`->related_to->product:`{pid_b}` SET reason = $reason",
-                {"reason": reason},
-            )
-            await db.query(
-                f"RELATE product:`{pid_b}`->related_to->product:`{pid_a}` SET reason = $reason",
-                {"reason": reason},
-            )
-        print(f"  {len(RELATED_PRODUCTS) * 2} related_to edges (bidirectional)")
-
-        # also_bought: derived from co-purchase in orders
-        user_products: dict[str, set[str]] = defaultdict(set)
-        for o in ORDERS:
-            for pid in o.get("products", []):
-                pid = ORDER_PRODUCT_FIXUPS.get(pid, pid)
-                user_products[o["user_id"]].add(pid)
-
+        # ── 7. Also-bought edges (derived from co-purchase) ───
+        print("[8/9] Seeding also_bought edges...")
         also_bought: dict[tuple[str, str], int] = {}
-        for _uid, products in user_products.items():
-            if len(products) < 2:
+        for _cid, prods in customer_products.items():
+            if len(prods) < 2:
                 continue
-            for a, b in combinations(sorted(products), 2):
+            for a, b in combinations(sorted(prods), 2):
                 for pair in [(a, b), (b, a)]:
                     also_bought[pair] = also_bought.get(pair, 0) + 1
 
@@ -299,51 +270,46 @@ async def seed():
                 f"RELATE product:`{pid_a}`->also_bought->product:`{pid_b}` SET weight = $w",
                 {"w": weight},
             )
-        print(f"  {len(also_bought)} also_bought edges (derived)")
+        print(f"  {len(also_bought)} also_bought edges")
 
-        # ── 9. Documents with embeddings ─────────────────────
-        print("[9/10] Seeding product documents (with embeddings)...")
-        for i in range(0, len(PRODUCTS), EMBED_BATCH):
-            batch = PRODUCTS[i : i + EMBED_BATCH]
+        # ── 8. Product documents with embeddings ──────────────
+        print("[9/9] Seeding documents (with embeddings)...")
+        print("  Product documents...")
+        for i in range(0, len(products_raw), EMBED_BATCH):
+            batch = products_raw[i : i + EMBED_BATCH]
             texts = []
             for p in batch:
                 desc = p.get("description", "") or ""
-                brand = p.get("brand", "") or ""
-                tags = ", ".join(p.get("tags", []))
-                text = f"{p['name']} by {brand}: {desc} Tags: {tags}"
+                text = f"{p['product_name']}: {desc}"
                 texts.append(text)
 
             vecs = await embeddings.aembed_documents(texts)
 
             for p, vec in zip(batch, vecs):
-                pid = p["id"]
+                pid = p["product_id"]
                 doc_id = f"prod_{pid}"
                 desc = p.get("description", "") or ""
-                brand = p.get("brand", "") or ""
-                tags = ", ".join(p.get("tags", []))
-                content = f"{p['name']} by {brand}: {desc} Tags: {tags}"
+                content = f"{p['product_name']}: {desc}"
                 await db.query(
                     f"CREATE documents:`{doc_id}` SET "
                     "doc_type = 'product', title = $title, content = $content, "
-                    "source_id = $source_id, metadata = $meta, embedding = $embedding",
+                    f"source_id = product:`{pid}`, metadata = $meta, embedding = $embedding",
                     {
-                        "title": p["name"],
+                        "title": p["product_name"],
                         "content": content,
-                        "source_id": f"product:`{pid}`",
                         "meta": {
                             "product_id": pid,
-                            "price": p.get("price"),
+                            "price": safe_float(p.get("price", "")),
                             "vertical": p.get("vertical"),
                             "subcategory": p.get("subcategory"),
-                            "brand": brand,
                         },
                         "embedding": vec,
                     },
                 )
-            print(f"  {min(i + EMBED_BATCH, len(PRODUCTS))}/{len(PRODUCTS)}")
+            print(f"  {min(i + EMBED_BATCH, len(products_raw))}/{len(products_raw)}")
 
-        # ── 10. FAQ documents ────────────────────────────────
-        print("[10/10] Seeding FAQ documents...")
+        # FAQ documents
+        print("  FAQ documents...")
         if os.path.exists(FAQ_PATH):
             with open(FAQ_PATH, encoding="utf-8") as f:
                 faqs = list(csv.DictReader(f))
@@ -388,25 +354,22 @@ async def seed():
         print("SEED COMPLETE")
         print("=" * 60)
         print(f"  Nodes:")
-        print(f"    {len(USERS):>6} users (with preferences, context, memory)")
-        print(f"    {len(PRODUCTS):>6} products (with brand, ingredients, tags)")
+        print(f"    {len(customers_raw):>6} customers")
+        print(f"    {len(products_raw):>6} products (scraped lookfantastic)")
         print(f"    {len(verticals) + len(subcats):>6} categories ({len(verticals)} verticals + {len(subcats)} subcategories)")
-        print(f"    {len(ORDERS):>6} orders")
-        print(f"    {len(REVIEWS):>6} reviews (with embeddings)")
-        print(f"    {len(GOALS):>6} goals")
-        print(f"    {len(INGREDIENTS):>6} ingredients")
-        print(f"  Edges (9 types):")
-        print(f"    placed_by:           user -> order")
-        print(f"    contains:            order -> product")
-        print(f"    has_review:          order -> review")
-        print(f"    belongs_to:          product -> category")
-        print(f"    child_of:            subcategory -> vertical")
-        print(f"    supports_goal:       {len(PRODUCT_GOAL_EDGES):>4} product -> goal")
-        print(f"    contains_ingredient: {len(PRODUCT_INGREDIENT_EDGES):>4} product -> ingredient")
-        print(f"    related_to:          {len(RELATED_PRODUCTS) * 2:>4} product <-> product")
-        print(f"    also_bought:         {len(also_bought):>4} product <-> product (derived)")
+        print(f"    {len(orders_raw):>6} orders")
+        print(f"    {len(reviews_raw):>6} reviews (with embeddings)")
+        print(f"    {len(GOALS):>6} goals (enrichment)")
+        print(f"    {len(INGREDIENTS):>6} ingredients (enrichment)")
+        print(f"  Edges:")
+        print(f"    placed:       customer -> order")
+        print(f"    contains:     order -> product")
+        print(f"    has_review:   order -> review")
+        print(f"    belongs_to:   product -> category")
+        print(f"    child_of:     subcategory -> vertical")
+        print(f"    also_bought:  {len(also_bought):>4} product <-> product (derived)")
         print(f"  Documents:")
-        print(f"    {len(PRODUCTS):>6} product docs (vector + BM25)")
+        print(f"    {len(products_raw):>6} product docs (vector + BM25)")
         print("\nDone!")
 
 

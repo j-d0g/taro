@@ -3,7 +3,7 @@
  * Always tries real API first; falls back to mock data on failure.
  */
 
-const API_BASE = 'http://localhost:8002';
+const API_BASE = 'http://localhost:8003';
 
 let mockResponseIdx = 0;
 

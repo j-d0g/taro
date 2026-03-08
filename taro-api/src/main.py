@@ -203,28 +203,28 @@ async def get_product(product_id: str):
 
 @app.get("/customers/{customer_id}")
 async def get_customer(customer_id: str):
-    """Return user profile by ID."""
+    """Return customer profile by ID."""
     async with get_db() as db:
-        rows = await db.query(f"SELECT * FROM user:`{customer_id}`")
+        rows = await db.query(f"SELECT * FROM customer:`{customer_id}`")
         if not rows:
             return {"error": f"Customer not found: {customer_id}"}
-        user = rows[0]
-        user["id"] = _str_id(user.get("id", ""))
-        return user
+        customer = rows[0]
+        customer["id"] = _str_id(customer.get("id", ""))
+        return customer
 
 
 @app.get("/customers/{customer_id}/orders")
 async def get_customer_orders(customer_id: str):
     """Return user's order history with product details."""
     async with get_db() as db:
-        # Verify user exists
-        user_rows = await db.query(f"SELECT id FROM user:`{customer_id}`")
+        # Verify customer exists
+        user_rows = await db.query(f"SELECT id FROM customer:`{customer_id}`")
         if not user_rows:
             return {"error": f"Customer not found: {customer_id}"}
 
-        # Get orders via placed_by edge (user -> placed_by -> order)
+        # Get orders via placed edge (customer -> placed -> order)
         result = await db.query(
-            f"SELECT ->placed_by->order.* AS orders FROM user:`{customer_id}`"
+            f"SELECT ->placed->order.* AS orders FROM customer:`{customer_id}`"
         )
         orders = result[0].get("orders", []) if result else []
 
@@ -252,9 +252,9 @@ async def get_customer_orders(customer_id: str):
 async def get_customer_recommendations(customer_id: str):
     """Get recommended products based on purchase history (also_bought edges)."""
     async with get_db() as db:
-        # Get products the user has bought
+        # Get products the customer has bought
         bought_result = await db.query(
-            f"SELECT ->placed_by->order->contains->product.id AS bought FROM user:`{customer_id}`"
+            f"SELECT ->placed->order->contains->product.id AS bought FROM customer:`{customer_id}`"
         )
         bought_ids = bought_result[0].get("bought", []) if bought_result else []
         if not bought_ids:
