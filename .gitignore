@@ -39,3 +39,9 @@ htmlcov/
 node_modules/
 .next/
 .langgraph_api/
+
+# Worktrees
+.worktrees/
+
+# Archive
+archive/
