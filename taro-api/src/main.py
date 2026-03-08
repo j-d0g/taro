@@ -169,7 +169,6 @@ async def chat(request: ChatRequest):
         user_context = ""
         if request.user_id:
             try:
-                from db import get_db
                 async with get_db() as db:
                     user_result = await db.query(
                         f"SELECT * FROM customer:{request.user_id}"
@@ -400,8 +399,6 @@ async def distill(request: DistillRequest):
     """
     logger.info(f"Distill request: user={request.user_id}, thread={request.thread_id}")
     try:
-        from db import get_db
-
         # Try persisted conversation first, fall back to checkpointer
         messages = []
         async with get_db() as db:
