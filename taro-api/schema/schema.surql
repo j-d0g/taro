@@ -65,6 +65,7 @@ DEFINE FIELD tags ON product TYPE option<array<string>>;     -- "vegan", "bestse
 DEFINE FIELD dietary_tags ON product TYPE option<array<string>>; -- "vegan", "gluten-free", "organic"
 DEFINE FIELD weight_g ON product TYPE option<float>;
 DEFINE FIELD image_url ON product TYPE option<string>;
+DEFINE FIELD product_url ON product TYPE option<string>;
 DEFINE FIELD created_at ON product TYPE datetime DEFAULT time::now();
 
 -- ============================================================
@@ -93,7 +94,7 @@ DEFINE INDEX idx_review_embedding ON review FIELDS embedding
     HNSW DIMENSION 1536 DIST COSINE;
 
 -- ============================================================
--- Category (vertical + subcategory hierarchy)
+-- Category (3 verticals: Skincare, Haircare, Body & Fragrance; 9 subcategories)
 -- ============================================================
 DEFINE TABLE category SCHEMAFULL;
 
