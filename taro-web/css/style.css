@@ -842,6 +842,26 @@ body {
   background: var(--bg-surface);
 }
 
+.chat-new {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.chat-new:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
 /* ── Chat Messages ────────────────────────────────── */
 .chat-messages {
   flex: 1;
@@ -1083,6 +1103,16 @@ body {
 @keyframes typingBounce {
   0%, 60%, 100% { transform: translateY(0); }
   30% { transform: translateY(-6px); }
+}
+
+.stream-cursor {
+  animation: blink 0.8s infinite;
+  color: var(--accent);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* ── Chat Input ───────────────────────────────────── */

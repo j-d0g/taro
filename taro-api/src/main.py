@@ -189,6 +189,51 @@ app.add_middleware(
 )
 
 
+async def _load_conversation(db, thread_id: str) -> list[dict]:
+    """Load conversation messages from SurrealDB."""
+    result = await db.query(
+        "SELECT messages FROM conversation WHERE thread_id = $tid",
+        {"tid": thread_id},
+    )
+    if result and isinstance(result[0], dict):
+        return result[0].get("messages", [])
+    return []
+
+
+async def _save_conversation(db, thread_id: str, user_id: str | None, user_msg: str, assistant_msg: str, tool_calls: list[dict]):
+    """Append messages to conversation in SurrealDB."""
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    new_messages = [
+        {"role": "user", "content": user_msg, "timestamp": now},
+        {"role": "assistant", "content": assistant_msg, "tool_calls": tool_calls, "timestamp": now},
+    ]
+
+    # Upsert: create or append
+    existing = await db.query(
+        "SELECT id, messages FROM conversation WHERE thread_id = $tid",
+        {"tid": thread_id},
+    )
+
+    if existing and isinstance(existing[0], dict) and "id" in existing[0]:
+        # Append to existing
+        old_messages = existing[0].get("messages", [])
+        all_messages = old_messages + new_messages
+        conv_id = str(existing[0]["id"])
+        await db.query(
+            f"UPDATE {conv_id} SET messages = $msgs, updated_at = time::now()",
+            {"msgs": all_messages},
+        )
+    else:
+        # Create new
+        await db.query(
+            "CREATE conversation SET thread_id = $tid, user_id = $uid, "
+            "messages = $msgs, created_at = time::now(), updated_at = time::now()",
+            {"tid": thread_id, "uid": user_id, "msgs": new_messages},
+        )
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Send a message to the chatbot."""
@@ -265,6 +310,16 @@ async def chat(request: ChatRequest):
                             })
             except Exception as prod_err:
                 logger.warning(f"Failed to fetch product details: {prod_err}")
+
+        # Persist conversation
+        try:
+            async with get_db() as db:
+                await _save_conversation(
+                    db, request.thread_id, request.user_id,
+                    request.message, reply, tool_calls,
+                )
+        except Exception as save_err:
+            logger.warning(f"Failed to save conversation: {save_err}")
 
         return ChatResponse(reply=reply, thread_id=request.thread_id, tool_calls=tool_calls, products=products)
     except Exception as e:
@@ -410,6 +465,48 @@ def _extract_products(output: str, products: list, seen: set):
         pass
 
 
+# ── Conversation endpoints ──────────────────────────────────
+
+
+@app.get("/conversations/{thread_id}")
+async def get_conversation(thread_id: str):
+    """Get conversation history by thread ID."""
+    async with get_db() as db:
+        result = await db.query(
+            "SELECT * FROM conversation WHERE thread_id = $tid",
+            {"tid": thread_id},
+        )
+        if not result:
+            return {"error": "Conversation not found"}
+        conv = result[0]
+        conv["id"] = _str_id(conv.get("id", ""))
+        return conv
+
+
+@app.get("/conversations")
+async def list_conversations(user_id: Optional[str] = None, limit: int = 20):
+    """List recent conversations, optionally filtered by user."""
+    async with get_db() as db:
+        if user_id:
+            result = await db.query(
+                "SELECT thread_id, user_id, created_at, updated_at, "
+                "array::len(messages) AS message_count "
+                "FROM conversation WHERE user_id = $uid "
+                "ORDER BY updated_at DESC LIMIT $lim",
+                {"uid": user_id, "lim": limit},
+            )
+        else:
+            result = await db.query(
+                "SELECT thread_id, user_id, created_at, updated_at, "
+                "array::len(messages) AS message_count "
+                "FROM conversation ORDER BY updated_at DESC LIMIT $lim",
+                {"lim": limit},
+            )
+        for r in result:
+            r["id"] = _str_id(r.get("id", ""))
+        return result
+
+
 @app.post("/distill", response_model=DistillResponse)
 async def distill(request: DistillRequest):
     """Distill conversation context into user memory.
@@ -420,11 +517,24 @@ async def distill(request: DistillRequest):
     """
     logger.info(f"Distill request: user={request.user_id}, thread={request.thread_id}")
     try:
-        # Get the agent's conversation history from the checkpointer
-        agent = _get_agent(None, None, "default")
-        config = {"configurable": {"thread_id": request.thread_id}}
-        state = await agent.aget_state(config)
-        messages = state.values.get("messages", [])
+        # Try persisted conversation first, fall back to checkpointer
+        messages = []
+        async with get_db() as db:
+            conv_messages = await _load_conversation(db, request.thread_id)
+            if conv_messages:
+                from langchain_core.messages import HumanMessage as HM, AIMessage
+                for m in conv_messages:
+                    if m["role"] == "user":
+                        messages.append(HM(content=m["content"]))
+                    elif m["role"] == "assistant":
+                        messages.append(AIMessage(content=m["content"]))
+
+        # Fall back to checkpointer (in-memory, won't survive restart)
+        if not messages:
+            agent = _get_agent(None, None, "default")
+            config = {"configurable": {"thread_id": request.thread_id}}
+            state = await agent.aget_state(config)
+            messages = state.values.get("messages", [])
 
         if not messages:
             return DistillResponse(user_id=request.user_id, context="", updated=False)

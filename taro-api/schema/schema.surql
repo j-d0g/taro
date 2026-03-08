@@ -204,3 +204,19 @@ DEFINE FIELD query ON failure_record TYPE string;
 DEFINE FIELD tool_used ON failure_record TYPE string;
 DEFINE FIELD error ON failure_record TYPE string;
 DEFINE FIELD created_at ON failure_record TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Conversation (persistent chat history)
+-- ============================================================
+DEFINE TABLE conversation SCHEMAFULL;
+
+DEFINE FIELD thread_id ON conversation TYPE string;
+DEFINE FIELD user_id ON conversation TYPE option<string>;
+DEFINE FIELD messages ON conversation TYPE array;         -- [{role, content, tool_calls?, timestamp}]
+DEFINE FIELD messages[*] ON conversation TYPE object FLEXIBLE;  -- allow nested fields
+DEFINE FIELD created_at ON conversation TYPE datetime DEFAULT time::now();
+DEFINE FIELD updated_at ON conversation TYPE datetime DEFAULT time::now();
+DEFINE FIELD summary ON conversation TYPE option<string>; -- LLM-distilled summary
+
+DEFINE INDEX idx_conversation_thread ON conversation FIELDS thread_id UNIQUE;
+DEFINE INDEX idx_conversation_user ON conversation FIELDS user_id;

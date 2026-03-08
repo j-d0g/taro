@@ -23,7 +23,7 @@ ALL_TOOLS = [
     # ACT phase: execute informed queries
     find,               # Hybrid RRF search: semantic + keyword (primary search)
     grep,               # BM25 keyword search within a scope (like bash grep)
-    graph_traverse,     # Follow relationship edges (9 edge types)
+    graph_traverse,     # Focused graph patterns (also_bought, ingredients, similar, customer_history, goal_products)
     surrealql_query,    # Raw read-only SurrealQL for aggregations
     web_search,         # Tavily web fallback with SurrealDB caching
 ]
