@@ -196,6 +196,7 @@ DEFINE FIELD pattern_type ON learned_pattern TYPE string;
 DEFINE FIELD query_pattern ON learned_pattern TYPE string;
 DEFINE FIELD best_tool ON learned_pattern TYPE string;
 DEFINE FIELD success_count ON learned_pattern TYPE int DEFAULT 0;
+DEFINE FIELD insight ON learned_pattern TYPE option<string>;
 DEFINE FIELD created_at ON learned_pattern TYPE datetime DEFAULT time::now();
 
 DEFINE TABLE failure_record SCHEMAFULL;

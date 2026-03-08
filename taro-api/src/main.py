@@ -325,12 +325,21 @@ async def chat_stream(request: ChatRequest):
         collected_product_ids: list[str] = []
         active_tools = {}  # run_id -> start_time
 
+        learn_insight = None  # Captured from judge node
+        import datetime as _dt
+        turn_start = _dt.datetime.now(_dt.timezone.utc).isoformat()
+
         try:
             async for event in agent.astream_events(input_msg, config=config, version="v2"):
                 kind = event.get("event", "")
                 name = event.get("name", "")
                 run_id = event.get("run_id", "")
                 data = event.get("data", {})
+                metadata = event.get("metadata", {})
+
+                # Skip events from the judge node (its LLM call is internal)
+                if metadata.get("langgraph_node") == "judge":
+                    continue
 
                 if kind == "on_tool_start":
                     tool_input = data.get("input", {})
@@ -401,6 +410,24 @@ async def chat_stream(request: ChatRequest):
 
             # Fetch structured product data for all collected IDs
             products = await _fetch_products(collected_product_ids)
+
+            # Check if judge captured a new insight
+            try:
+                async with get_db() as db:
+                    latest = await db.query(
+                        "SELECT insight, pattern_type FROM learned_pattern "
+                        "WHERE created_at >= type::datetime($ts) "
+                        "ORDER BY created_at DESC LIMIT 1",
+                        {"ts": turn_start},
+                    )
+                    if latest and latest[0].get("insight"):
+                        learn_insight = latest[0]["insight"]
+                        yield _sse("learn", {
+                            "insight": learn_insight,
+                            "type": latest[0].get("pattern_type", "success"),
+                        })
+            except Exception as learn_err:
+                logger.debug(f"Learn event check failed: {learn_err}")
 
             # Final done event with aggregated data
             yield _sse("done", {

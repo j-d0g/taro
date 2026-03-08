@@ -480,7 +480,9 @@ async def _handle_list_patterns(db, verbose=False):
 
     lines = [f"Learned patterns ({len(patterns)}):"]
     for p in patterns:
-        lines.append(f"  [{p.get('pattern_type', '?')}] {p.get('query_pattern', '?')} -> {p.get('best_tool', '?')} (x{p.get('success_count', 0)})")
+        insight = p.get('insight', '')
+        insight_str = f" — {insight}" if insight else ""
+        lines.append(f"  [{p.get('pattern_type', '?')}] {p.get('query_pattern', '?')} -> {p.get('best_tool', '?')} (x{p.get('success_count', 0)}){insight_str}")
     lines.append(f"\nRecent failures ({len(failures)}):")
     for f in failures:
         lines.append(f"  {f.get('tool_used', '?')}: {f.get('error', '?')[:80]}")
