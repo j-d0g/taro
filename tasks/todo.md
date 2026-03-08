@@ -36,6 +36,21 @@ Tasks:
 - [ ] Update default model in .env and AVAILABLE_MODELS
 - [ ] Document findings in tasks/model-comparison.md
 
+### Next: Augment Review Dataset
+**Priority**: High
+**Goal**: Every product should have 0-5 written reviews and 0-50 star-only ratings. Use parallel Haiku sub-agents to generate realistic, varied review data at scale.
+
+Tasks:
+- [ ] Query current review coverage: how many products have 0 reviews vs some
+- [ ] Design review generation prompt: persona-varied, realistic tone, product-aware (reads actual product description/category/price before writing)
+- [ ] Spawn parallel Haiku agents (cheap + fast) — each agent handles a batch of products
+- [ ] For each product: generate 0-5 written reviews (rating + comment + sentiment) and 0-50 star-only ratings (rating only, no text)
+- [ ] Distribution should feel natural: popular products get more reviews, niche products fewer
+- [ ] Insert via SurrealDB: create review records + RELATE order->has_review->review edges
+- [ ] Create matching synthetic orders/users if needed for the graph edges
+- [ ] Verify: count reviews per product, check distribution looks realistic
+- [ ] Re-run `make smoke` to confirm agent can surface review data in responses
+
 ### P2: Demo Polish
 - [ ] Self-improvement logging (learned_pattern + failure_record tables)
 - [ ] Analytics dashboard on tool usage patterns
