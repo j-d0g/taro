@@ -1,4 +1,4 @@
-.PHONY: install serve studio seed surrealdb health test verify
+.PHONY: install serve studio seed surrealdb health test verify eval
 
 # Install dependencies
 install:
@@ -46,6 +46,19 @@ restart:
 	@cd src && nohup python -m uvicorn main:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 300 > /tmp/taro-api.log 2>&1 &
 	@sleep 5
 	@curl -sf http://localhost:8002/health > /dev/null && echo "API healthy on :8002" || (echo "FAILED - check /tmp/taro-api.log"; cat /tmp/taro-api.log | tail -10; exit 1)
+
+# Run DeepEval evaluation suite (10 test cases, ~5 min)
+eval:
+	@echo "=== Evaluation Suite (DeepEval) ==="
+	@curl -sf http://localhost:8002/health > /dev/null || (echo "API not running. Run: make restart"; exit 1)
+	@python -c "import deepeval" 2>/dev/null || (echo "deepeval not installed. Run: pip install deepeval"; exit 1)
+	deepeval test run tests/eval_suite.py -v
+
+# Run eval suite without DeepEval (basic assertions only)
+eval-basic:
+	@echo "=== Evaluation Suite (basic mode) ==="
+	@curl -sf http://localhost:8002/health > /dev/null || (echo "API not running. Run: make restart"; exit 1)
+	python -u tests/eval_suite.py
 
 # Run adversarial stress test (restarts API first to ensure fresh code)
 stress: restart
