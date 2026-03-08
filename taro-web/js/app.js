@@ -17,8 +17,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Check API health and log status
+  // Check API health, fetch model name, and log status
   const apiUp = await checkApiHealth();
+  if (apiUp) {
+    try {
+      const res = await fetch(`${API_BASE}/models`);
+      const data = await res.json();
+      const el = document.getElementById('modelName');
+      if (el && data.default_model) el.textContent = data.default_model;
+    } catch (_) {}
+  }
   console.log(
     '%c Taro.ai %c Powered by SurrealDB ',
     'background: #1C1C1E; color: #C9A96E; padding: 4px 8px; border-radius: 4px 0 0 4px; font-weight: bold;',

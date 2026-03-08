@@ -40,7 +40,7 @@ def test_raw_query_allows_reads():
 
 def test_hybrid_search_rrf_fusion():
     """Test the RRF fusion function directly."""
-    from tools.hybrid_search import _rrf_fuse
+    from tools.fs_tools import _rrf_fuse
 
     vec_results = [
         {"id": "doc:1", "title": "A", "vec_score": 0.9},

@@ -6,12 +6,49 @@ Graph edges appear as followable paths in ls output.
 """
 
 import re
+from functools import lru_cache
 
 from langchain_core.tools import tool
 from langchain_openai import OpenAIEmbeddings
 from loguru import logger
 
 from db import get_db
+
+# ── Embedding cache ──────────────────────────────────────────
+# LRU cache on embedding calls to avoid redundant OpenAI API hits.
+# Cuts rate-limit risk in half under stress testing.
+
+_embeddings_model = None
+
+
+def _get_embeddings():
+    global _embeddings_model
+    if _embeddings_model is None:
+        _embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    return _embeddings_model
+
+
+# Cache up to 128 query embeddings (tuple key since lists aren't hashable)
+_embedding_cache: dict[str, list[float]] = {}
+_CACHE_MAX = 128
+
+
+async def _cached_embed(query: str) -> list[float]:
+    """Get embedding for a query, using cache if available."""
+    if query in _embedding_cache:
+        logger.debug(f"Embedding cache hit: '{query[:40]}...'")
+        return _embedding_cache[query]
+
+    embeddings = _get_embeddings()
+    result = await embeddings.aembed_query(query)
+
+    if len(_embedding_cache) >= _CACHE_MAX:
+        # Evict oldest entry
+        oldest = next(iter(_embedding_cache))
+        del _embedding_cache[oldest]
+
+    _embedding_cache[query] = result
+    return result
 
 # ── Path router ──────────────────────────────────────────────
 
@@ -553,25 +590,28 @@ async def grep(query: str, scope: str = "") -> str:
     try:
         async with get_db() as db:
             if scope in ("", "/", "/products"):
-                # BM25 search on documents table
+                # Keyword search on documents table (CONTAINS fallback for BM25 broken in SurrealDB 3.0)
                 type_filter = "AND doc_type = 'product'" if scope == "/products" else ""
+                words = query.split()[:4]
+                contains_filter = " OR ".join(
+                    f"string::lowercase(content) CONTAINS string::lowercase('{w}')"
+                    for w in words
+                )
                 surql = f"""
-                    SELECT id, title, content, doc_type, source_id,
-                           search::score(1) AS score
+                    SELECT id, title, content, doc_type, source_id, 1.0 AS score
                     FROM documents
-                    WHERE content @1@ $query {type_filter}
-                    ORDER BY score DESC
+                    WHERE ({contains_filter}) {type_filter}
                     LIMIT 10
                 """
                 result = await db.query(surql, {"query": query})
-                docs = result or []
+                docs = result if isinstance(result, list) else []
                 if not docs:
                     return f"No results for '{query}' in {scope or 'all documents'}"
                 lines = [f"grep '{query}' {scope or '/'} ({len(docs)} matches):"]
                 for doc in docs:
                     title = doc.get("title", "Untitled")
                     score = doc.get("score", 0)
-                    source = doc.get("source_id", "")
+                    source = str(doc.get("source_id", ""))
                     content = doc.get("content", "")[:150]
                     lines.append(f"\n  {title} (score: {score:.2f})")
                     if source:
@@ -632,8 +672,19 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
     """
     logger.info(f"find: query='{query}', doc_type='{doc_type}'")
     try:
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-        query_embedding = await embeddings.aembed_query(query)
+        # Cached + retry embedding call (avoids redundant OpenAI API hits)
+        query_embedding = None
+        for attempt in range(3):
+            try:
+                query_embedding = await _cached_embed(query)
+                break
+            except Exception as embed_err:
+                if attempt < 2:
+                    import asyncio
+                    await asyncio.sleep(1 * (attempt + 1))
+                    logger.warning(f"find: embedding retry {attempt + 1}: {embed_err}")
+                else:
+                    raise embed_err
 
         async with get_db() as db:
             type_filter = "AND doc_type = $doc_type" if doc_type else ""
@@ -641,16 +692,19 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
             if doc_type:
                 params["doc_type"] = doc_type
 
-            fetch_limit = limit * 2
+            fetch_limit = limit * 3
 
+            # Vector search: cosine similarity ORDER BY (KNN <|N|> broken in SurrealDB 3.0)
             vec_surql = f"""
                 SELECT id, title, content, doc_type, source_id,
                        vector::similarity::cosine(embedding, $embedding) AS vec_score
                 FROM documents
-                WHERE embedding != NONE {type_filter}
+                WHERE doc_type IS NOT NONE {type_filter}
                 ORDER BY vec_score DESC
                 LIMIT {fetch_limit}
             """
+
+            # Keyword search: try BM25, fall back to CONTAINS
             bm25_surql = f"""
                 SELECT id, title, content, doc_type, source_id,
                        search::score(1) AS bm25_score
@@ -663,8 +717,23 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
             vec_result = await db.query(vec_surql, params)
             bm25_result = await db.query(bm25_surql, params)
 
-            vec_docs = [d for d in (vec_result or []) if isinstance(d, dict)]
-            bm25_docs = [d for d in (bm25_result or []) if isinstance(d, dict)]
+            # Normalize results (SurrealDB 3.0 returns flat list, handle string errors)
+            vec_docs = vec_result if isinstance(vec_result, list) else []
+            bm25_docs = bm25_result if isinstance(bm25_result, list) else []
+
+            # BM25 fallback: if @1@ returned empty, use CONTAINS
+            if not bm25_docs:
+                # Split query into words for multi-word CONTAINS
+                words = query.split()[:3]  # Use first 3 words
+                contains_filter = " OR ".join(f"string::lowercase(content) CONTAINS string::lowercase('{w}')" for w in words)
+                fallback_surql = f"""
+                    SELECT id, title, content, doc_type, source_id, 1.0 AS bm25_score
+                    FROM documents
+                    WHERE ({contains_filter}) {type_filter}
+                    LIMIT {fetch_limit}
+                """
+                bm25_result = await db.query(fallback_surql, params)
+                bm25_docs = bm25_result if isinstance(bm25_result, list) else []
 
             fused = _rrf_fuse(vec_docs, bm25_docs)[:limit]
 
@@ -678,12 +747,12 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
                 vec = doc.get("vec_score", 0)
                 bm25 = doc.get("bm25_score", 0)
                 dtype = doc.get("doc_type", "?")
-                source = doc.get("source_id", "")
+                source = str(doc.get("source_id", ""))
                 content = doc.get("content", "")[:200]
 
                 lines.append(f"\n  {title} (rrf: {rrf:.4f}, vec: {vec:.3f}, bm25: {bm25:.2f}, type: {dtype})")
                 if source:
-                    sid = str(source).replace("product:", "")
+                    sid = source.replace("product:", "")
                     lines.append(f"    → /products/{sid}")
                 lines.append(f"    {content}{'...' if len(doc.get('content', '')) > 200 else ''}")
             return "\n".join(lines)

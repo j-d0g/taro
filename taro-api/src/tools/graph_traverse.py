@@ -5,6 +5,19 @@ from loguru import logger
 
 from db import get_db
 
+# All available edge types in the data graph
+EDGE_TYPES = {
+    "placed": {"from": "customer", "to": "order", "desc": "customer's purchase history"},
+    "contains": {"from": "order", "to": "product", "desc": "products in an order"},
+    "has_review": {"from": "order", "to": "review", "desc": "reviews for an order"},
+    "belongs_to": {"from": "product", "to": "category", "desc": "product categorization"},
+    "child_of": {"from": "category", "to": "category", "desc": "category hierarchy"},
+    "also_bought": {"from": "product", "to": "product", "desc": "co-purchase signal"},
+    "supports_goal": {"from": "product", "to": "goal", "desc": "goal-product mapping"},
+    "contains_ingredient": {"from": "product", "to": "ingredient", "desc": "product ingredients"},
+    "related_to": {"from": "product", "to": "product", "desc": "related products with reason"},
+}
+
 
 @tool
 async def graph_traverse(
@@ -15,44 +28,61 @@ async def graph_traverse(
 ) -> str:
     """Traverse graph relationships from a starting record.
 
-    Follows edges to discover connected records.
-    Best for: "what category is this product in?", "related products", "subcategories of X",
-    "what products are in this order?", "reviews for this order".
+    Follows edges to discover connected records. Use source_id from search
+    results (e.g. 'product:impact_whey') as start_id.
 
-    Available edges:
-    - placed: customer -> order (what orders a customer placed)
-    - contains: order -> product (what products are in an order)
-    - has_review: order -> review (reviews linked to an order)
-    - belongs_to: product -> category (what category a product is in)
-    - child_of: category -> category (subcategory -> vertical hierarchy)
-    - also_bought: product -> product (co-purchased products, derived)
-
-    Common traversal: customer->placed->order->contains->product (customer's purchase history, depth=3).
-
-    Use the source_id returned by search tools (e.g. 'product:impact_whey') as start_id.
+    Available edge types:
+      - placed: customer -> order (purchase history)
+      - contains: order -> product (order contents)
+      - has_review: order -> review (customer feedback)
+      - belongs_to: product -> category (what category)
+      - child_of: category -> category (subcategories)
+      - also_bought: product -> product (co-purchased items)
+      - supports_goal: product -> goal (goal mapping)
+      - contains_ingredient: product -> ingredient (ingredients)
+      - related_to: product -> product (similar/complementary)
 
     Args:
-        start_id: Starting record ID (e.g. 'customer:abc123', 'product:whey_isolate', 'category:protein').
-        edge_type: Relationship type: 'placed', 'contains', 'has_review', 'belongs_to', 'child_of', 'also_bought'.
+        start_id: Starting record ID (e.g. 'customer:abc123', 'product:impact_whey', 'category:protein').
+        edge_type: Relationship type (see list above).
         direction: 'out' (->edge->) or 'in' (<-edge<-).
         depth: Hops to traverse (1-3, default 1).
     """
     logger.info(f"graph_traverse: {start_id} -{edge_type}-> depth={depth}")
+
+    if edge_type not in EDGE_TYPES:
+        available = ", ".join(sorted(EDGE_TYPES.keys()))
+        return f"Unknown edge type: '{edge_type}'. Available: {available}"
+
     try:
         async with get_db() as db:
             depth = min(depth, 3)  # Cap at 3 hops
 
+            # SurrealDB 3.0: use ->edge->? (wildcard) instead of ->edge->*
             if direction == "out":
-                arrow = "".join([f"->{edge_type}->" for _ in range(depth)])
+                arrow = "".join([f"->{edge_type}->?" for _ in range(depth)])
             else:
-                arrow = "".join([f"<-{edge_type}<-" for _ in range(depth)])
+                arrow = "".join([f"<-{edge_type}<-?" for _ in range(depth)])
 
-            surql = f"SELECT * FROM {start_id}{arrow}*"
+            surql = f"SELECT * FROM {start_id}{arrow}"
             result = await db.query(surql)
-            records = result or []
+
+            # Handle both SurrealDB 3.0 result formats
+            if isinstance(result, list) and result:
+                if isinstance(result[0], dict) and "result" in result[0]:
+                    records = result[0].get("result", [])
+                else:
+                    records = result
+            else:
+                records = []
 
             if not records:
-                return f"No {edge_type} connections from {start_id} (direction: {direction}, depth: {depth})"
+                edge_info = EDGE_TYPES[edge_type]
+                return (
+                    f"No {edge_type} connections from {start_id} "
+                    f"(direction: {direction}, depth: {depth}).\n"
+                    f"Edge '{edge_type}' connects {edge_info['from']} -> {edge_info['to']}: {edge_info['desc']}"
+                )
 
             lines = [f"**Graph traversal from {start_id}** ({edge_type}, {direction}, depth {depth}):"]
             for rec in records:
@@ -63,9 +93,10 @@ async def graph_traverse(
                 if desc:
                     lines.append(f"  {desc[:150]}")
                 # Show relation metadata if present
-                reason = rec.get("reason")
-                if reason:
-                    lines.append(f"  Reason: {reason}")
+                for meta_field in ("reason", "weight", "score", "comment", "sentiment"):
+                    val = rec.get(meta_field)
+                    if val is not None:
+                        lines.append(f"  {meta_field}: {val}")
             return "\n".join(lines)
     except Exception as e:
         logger.error(f"graph_traverse error: {e}")
