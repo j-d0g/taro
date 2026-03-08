@@ -165,7 +165,7 @@ async def list_products(
     vertical: Optional[str] = None,
     search: Optional[str] = None,
     brand: Optional[str] = None,
-    limit: int = 100,
+    limit: int = 2000,
     offset: int = 0,
 ):
     """List products with optional filters and pagination."""
@@ -187,7 +187,7 @@ async def list_products(
         surql = (
             "SELECT id, name, vertical, subcategory, price, avg_rating, brand, "
             f"image_url, description FROM product{where} ORDER BY name "
-            f"LIMIT {min(limit, 500)} START {offset}"
+            f"LIMIT {min(limit, 2000)} START {offset}"
         )
         rows = await db.query(surql, params)
 
