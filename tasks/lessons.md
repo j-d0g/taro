@@ -62,6 +62,11 @@
 **Solution**: Always wrap in `str()`: `str(doc.get("source_id", ""))`.
 **Prevention**: In SurrealDB 3.0, any field that references another record will be a RecordID. Always coerce to string before string operations.
 
+### L13: SurrealSaver Needs Tables Pre-Created
+**Problem**: `langgraph-checkpoint-surrealdb` v2.0.0's `setup()` is a no-op — it doesn't create the `checkpoint` or `write` tables. When those tables don't exist, SurrealDB 3.0 returns an error *string* (e.g., `"The table 'checkpoint' does not exist"`) instead of an empty list. SurrealSaver treats `result[0]` as a dict, but gets a character, causing `TypeError: string indices must be integers`.
+**Solution**: Manually create `DEFINE TABLE checkpoint SCHEMALESS` and `DEFINE TABLE write SCHEMALESS` in the schema before first use. With empty tables, `db.query()` returns `[]` as expected.
+**Prevention**: When integrating third-party LangGraph checkpointers, always check if they auto-create tables. For SurrealDB 3.0, verify that missing tables return error strings (not exceptions), which breaks libraries expecting list returns.
+
 ## Patterns to Reuse
 
 ### The SurrealFS Pattern
