@@ -7,6 +7,12 @@ let threadId = crypto.randomUUID();
 let queryCount = 0;
 let learnedCount = 0;
 
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // ── Toggle chat panel ──────────────────────────────────
 
 function toggleChat() {
@@ -27,7 +33,7 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
   // Message bubble
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
-  bubble.innerHTML = content;
+  bubble.innerHTML = formatMarkdown(content);
   msgDiv.appendChild(bubble);
 
   // Tool trace cards (SurrealDB multi-model visualization)
