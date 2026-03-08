@@ -9,6 +9,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -290,6 +291,64 @@ async def chat(request: ChatRequest):
             thread_id=request.thread_id,
             tool_calls=[],
         )
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Stream chat response via SSE with intermediate reasoning steps."""
+
+    async def event_generator():
+        try:
+            agent = _get_agent(request.model_provider, request.model_name, request.prompt_id)
+            config = {"configurable": {"thread_id": request.thread_id}}
+
+            # Inject user context (same as blocking endpoint)
+            message_content = request.message
+            if request.user_id:
+                try:
+                    async with get_db() as db:
+                        user_result = await db.query(f"SELECT * FROM customer:`{request.user_id}`")
+                        if user_result and isinstance(user_result[0], dict) and "name" in user_result[0]:
+                            user = user_result[0]
+                            name = user.get("name", request.user_id)
+                            message_content = f"[User: {name}]\n\n{request.message}"
+                except Exception:
+                    pass
+
+            input_msg = {"messages": [HumanMessage(content=message_content)]}
+
+            # Stream events from LangGraph
+            async for event in agent.astream_events(input_msg, config=config, version="v2"):
+                kind = event.get("event", "")
+
+                if kind == "on_chat_model_start":
+                    yield f"data: {json.dumps({'type': 'reasoning', 'content': 'Thinking...'})}\n\n"
+
+                elif kind == "on_tool_start":
+                    tool_name = event.get("name", "")
+                    tool_input = event.get("data", {}).get("input", {})
+                    yield f"data: {json.dumps({'type': 'tool_call', 'name': tool_name, 'args': tool_input})}\n\n"
+
+                elif kind == "on_tool_end":
+                    tool_output = event.get("data", {}).get("output", "")
+                    output_str = str(tool_output)[:500]
+                    yield f"data: {json.dumps({'type': 'tool_result', 'content': output_str})}\n\n"
+
+                elif kind == "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk", None)
+                    if chunk and hasattr(chunk, "content") and chunk.content:
+                        yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
+
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/conversations/{thread_id}")

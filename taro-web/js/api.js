@@ -178,6 +178,42 @@ async function sendChatMessage(message, threadId) {
   }
 }
 
+// ── Streaming chat endpoint (SSE) ─────────────────────
+
+async function sendChatMessageStream(message, threadId, onEvent) {
+  const userId = typeof DEMO_CUSTOMER_ID !== 'undefined' ? DEMO_CUSTOMER_ID : null;
+
+  const response = await fetch(`${API_BASE}/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, thread_id: threadId, user_id: userId }),
+  });
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const event = JSON.parse(line.slice(6));
+          onEvent(event);
+        } catch (e) {
+          // skip malformed events
+        }
+      }
+    }
+  }
+}
+
 // ── Health check ───────────────────────────────────────
 
 async function checkApiHealth() {

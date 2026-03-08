@@ -239,6 +239,75 @@ function useSuggestion(el) {
   sendMessage();
 }
 
+// ── Streaming send message ─────────────────────────────
+
+async function sendMessageStreaming() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  addMessage('user', text);
+
+  // Create a streaming message container
+  const container = document.getElementById('chatMessages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'msg agent';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = '<span class="stream-cursor">|</span>';
+  msgDiv.appendChild(bubble);
+  container.appendChild(msgDiv);
+
+  let fullText = '';
+  const toolCalls = [];
+
+  try {
+    await sendChatMessageStream(text, threadId, (event) => {
+      switch (event.type) {
+        case 'reasoning':
+          bubble.innerHTML = `<em style="color:var(--text-dim)">${escapeHtml(event.content)}</em><span class="stream-cursor">|</span>`;
+          break;
+        case 'tool_call':
+          toolCalls.push({ name: event.name, type: 'relational', args: JSON.stringify(event.args) });
+          bubble.innerHTML += `<br><span style="color:var(--text-dim);font-size:11px">&#9881; ${escapeHtml(event.name)}</span>`;
+          break;
+        case 'token':
+          fullText += event.content;
+          bubble.innerHTML = formatMarkdown(fullText) + '<span class="stream-cursor">|</span>';
+          break;
+        case 'done':
+          bubble.innerHTML = formatMarkdown(fullText);
+          // Add tool trace cards
+          if (toolCalls.length > 0) {
+            const traceDiv = document.createElement('div');
+            traceDiv.className = 'tool-trace';
+            traceDiv.innerHTML = toolCalls.map(tc => `
+              <div class="tool-card" onclick="this.classList.toggle('expanded')">
+                <div class="tool-card-header">
+                  <span class="tool-icon ${tc.type}">&#9881;</span>
+                  ${tc.name}
+                  <span class="tool-label ${tc.type}">${tc.type}</span>
+                </div>
+                <div class="tool-card-detail">${escapeHtml(tc.args)}</div>
+              </div>
+            `).join('');
+            msgDiv.appendChild(traceDiv);
+          }
+          queryCount += toolCalls.length;
+          document.getElementById('queryCount').textContent = queryCount;
+          break;
+        case 'error':
+          bubble.innerHTML = `<span style="color:var(--error)">Error: ${escapeHtml(event.content)}</span>`;
+          break;
+      }
+      container.scrollTop = container.scrollHeight;
+    });
+  } catch (err) {
+    bubble.innerHTML = 'Connection error: ' + escapeHtml(err.message);
+  }
+}
+
 // ── New Chat ───────────────────────────────────────────
 
 function newChat() {

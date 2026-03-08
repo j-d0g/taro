@@ -1041,6 +1041,16 @@ body {
   30% { transform: translateY(-6px); }
 }
 
+.stream-cursor {
+  animation: blink 0.8s infinite;
+  color: var(--accent);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* ── Chat Input ───────────────────────────────────── */
 .chat-input-area {
   display: flex;
