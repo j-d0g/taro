@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taro.ai — SurrealDB E-commerce Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -121,6 +124,11 @@
         engine. I can search products semantically, traverse purchase graphs,
         and learn from our conversations. What are you looking for?
       </div>
+    </div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Best sellers under &pound;30</button>
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Skincare routine for dry skin</button>
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Compare retinol serums</button>
     </div>
   </div>
 
