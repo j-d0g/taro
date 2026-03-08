@@ -51,6 +51,24 @@ Tasks:
 - [ ] Verify: count reviews per product, check distribution looks realistic
 - [ ] Re-run `make smoke` to confirm agent can surface review data in responses
 
+### Next: Repository Audit & Cleanup
+**Priority**: High
+**Goal**: Scan entire repo for stale docs, unused code, broken references, legacy patterns. Polish to be clean, current, and consistent. Minimal but sufficient documentation.
+
+Tasks:
+- [ ] Scan MEMORY.md, CLAUDE.md, README.md, DEMO.md, CHANGELOG.md — flag anything that references old tool names (hybrid_search, keyword_search, semantic_search, get_record), old tool counts (8/13), wrong ports, stale instructions
+- [ ] Scan all code for unused imports, dead code paths, orphaned files (e.g. old tool files that are no longer in ALL_TOOLS)
+- [ ] Check test files reference correct tools/endpoints — no tests for removed tools
+- [ ] Verify schema.surql matches actual seeded data (field names, types, edge definitions)
+- [ ] Check seed.py / mock_data.py are consistent with schema and current tool expectations
+- [ ] Audit Makefile targets — do they all work? Correct ports?
+- [ ] Check .env.example matches actual required vars
+- [ ] Verify frontend JS (api.js, chat.js) points to correct API endpoints and handles current response format
+- [ ] Remove or deprecate: hybrid_search.py, semantic_search.py, keyword_search.py, get_record.py if still present but unused
+- [ ] Update README with current architecture (9 tools, distill endpoint, harness phases)
+- [ ] Raise questions/concerns about anything ambiguous or potentially broken
+- [ ] Keep docs minimal — no bloat, no redundancy between files
+
 ### P2: Demo Polish
 - [ ] Self-improvement logging (learned_pattern + failure_record tables)
 - [ ] Analytics dashboard on tool usage patterns
