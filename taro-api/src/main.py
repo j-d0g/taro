@@ -239,7 +239,6 @@ async def chat(request: ChatRequest):
         # Fetch structured product data from DB
         if product_ids:
             try:
-                from db import get_db
                 async with get_db() as db:
                     for pid in product_ids[:10]:  # Cap at 10
                         result = await db.query(
@@ -414,8 +413,6 @@ async def distill(request: DistillRequest):
     """
     logger.info(f"Distill request: user={request.user_id}, thread={request.thread_id}")
     try:
-        from db import get_db
-
         # Get the agent's conversation history from the checkpointer
         agent = _get_agent(None, None, "default")
         config = {"configurable": {"thread_id": request.thread_id}}
