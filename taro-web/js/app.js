@@ -3,14 +3,11 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Bind filter tabs and search bar (sync — needs to be ready before products load)
-  initFilters();
-
   // Bind chat keyboard shortcuts
   initChatKeyboard();
 
-  // Render initial product grid (async — fetches from API)
-  await renderProducts();
+  // Build dynamic filter tabs from API verticals, then render products
+  await initDynamicTabs();
 
   // Close modal on Escape
   document.addEventListener('keydown', (e) => {

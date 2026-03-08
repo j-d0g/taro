@@ -1,5 +1,5 @@
 /**
- * chat.js — Chat panel, messages, tool trace cards, graph viz, typing indicator.
+ * chat.js — Chat panel, messages, tool trace cards, graph viz, product cards, typing indicator.
  */
 
 let chatOpen = false;
@@ -22,9 +22,67 @@ function toggleChat() {
   if (chatOpen) document.getElementById('chatInput').focus();
 }
 
+// ── Product reference extraction ───────────────────────
+
+function extractProductReferences(text) {
+  // Match **Product Name** (£XX.XX) or just **Product Name**
+  const refs = [];
+  const regex = /\*\*([^*]+)\*\*(?:\s*\([\u00a3$]?([\d.]+)\))?/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    refs.push({ name: match[1].trim(), price: match[2] ? parseFloat(match[2]) : null });
+  }
+  return refs;
+}
+
+function findProductByName(name) {
+  if (!cachedProducts || !cachedProducts.length) return null;
+  const lower = name.toLowerCase();
+  // Exact match
+  let found = cachedProducts.find(p => p.name.toLowerCase() === lower);
+  if (found) return found;
+  // Fuzzy: product name starts with or contains the reference
+  found = cachedProducts.find(p => p.name.toLowerCase().startsWith(lower));
+  if (found) return found;
+  found = cachedProducts.find(p => p.name.toLowerCase().includes(lower));
+  if (found) return found;
+  // Reverse: reference contains product name
+  found = cachedProducts.find(p => lower.includes(p.name.toLowerCase()));
+  return found || null;
+}
+
+function renderChatProductCards(products) {
+  if (!products || products.length === 0) return '';
+
+  const cards = products.map(p => {
+    const vc = typeof verticalClass === 'function' ? verticalClass(p.vertical) : (p.vertical || '').toLowerCase();
+    const rating = p.avg_rating || 0;
+    const stars = '\u2605'.repeat(Math.round(rating)) + '\u2606'.repeat(5 - Math.round(rating));
+    return `
+      <div class="chat-product-card" onclick="openProductDetail('${p.id}')">
+        <div class="chat-product-img">
+          ${p.image_url
+            ? `<img src="${p.image_url}" alt="${escapeHtml(p.name)}"
+                 onerror="this.parentElement.innerHTML='&#128722;'" />`
+            : '&#128722;'}
+        </div>
+        <div class="chat-product-info">
+          <div class="chat-product-name">${escapeHtml(p.name)}</div>
+          <div class="chat-product-meta">
+            <span class="chat-product-price">\u00a3${(p.price || 0).toFixed(2)}</span>
+            <span class="chat-product-rating"><span style="color:var(--warning)">${stars}</span> ${rating.toFixed(1)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="chat-product-cards">${cards}</div>`;
+}
+
 // ── Add message to chat ────────────────────────────────
 
-function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = null) {
+function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = null, products = []) {
   const container = document.getElementById('chatMessages');
 
   const msgDiv = document.createElement('div');
@@ -35,6 +93,25 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
   bubble.className = 'msg-bubble';
   bubble.innerHTML = formatMarkdown(content);
   msgDiv.appendChild(bubble);
+
+  // Product cards for agent messages
+  if (role === 'agent') {
+    let matchedProducts = products || [];
+
+    // If no structured products provided, try text extraction
+    if (matchedProducts.length === 0) {
+      const refs = extractProductReferences(content);
+      matchedProducts = refs
+        .map(ref => findProductByName(ref.name))
+        .filter(Boolean);
+    }
+
+    if (matchedProducts.length > 0) {
+      const cardsDiv = document.createElement('div');
+      cardsDiv.innerHTML = renderChatProductCards(matchedProducts);
+      msgDiv.appendChild(cardsDiv.firstElementChild);
+    }
+  }
 
   // Tool trace cards (SurrealDB multi-model visualization)
   if (toolCalls.length > 0) {
@@ -130,7 +207,7 @@ async function sendMessage() {
     const gIdx = graphResponseIdx % (typeof MOCK_GRAPHS !== 'undefined' ? MOCK_GRAPHS.length : 1);
     graphResponseIdx++;
 
-    addMessage('agent', resp.reply, resp.tool_calls || [], resp.learn, gIdx);
+    addMessage('agent', resp.reply, resp.tool_calls || [], resp.learn, gIdx, resp.products || []);
 
     // Show unread dot if chat is closed
     if (!chatOpen) {

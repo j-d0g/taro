@@ -72,10 +72,13 @@ async function fetchVerticals() {
 
 async function fetchCategories(vertical = null) {
   try {
-    const url = vertical ? `${API_BASE}/categories?vertical=${vertical}` : `${API_BASE}/categories`;
-    const res = await fetch(url);
+    const res = await fetch(`${API_BASE}/categories`);
     if (!res.ok) throw new Error(`API ${res.status}`);
-    return await res.json();
+    const verticals = await res.json();
+    if (!vertical) return verticals;
+    // Find the matching vertical and return its subcategory names
+    const match = verticals.find(v => v.name === vertical);
+    return match ? (match.subcategories || []).map(s => s.name) : [];
   } catch (err) {
     console.warn('fetchCategories: API unavailable, using mock data:', err.message);
     if (typeof MOCK_SUBCATEGORIES === 'undefined') return [];
@@ -141,6 +144,7 @@ async function sendChatMessage(message, threadId) {
     return {
       reply: data.reply,
       tool_calls: toolCalls,
+      products: data.products || [],
       learn: null,
       thread_id: data.thread_id,
     };
@@ -156,6 +160,7 @@ async function sendChatMessage(message, threadId) {
     return {
       reply: resp.reply,
       tool_calls: resp.tool_calls,
+      products: resp.products || [],
       learn: resp.learn || null,
       thread_id: threadId,
     };

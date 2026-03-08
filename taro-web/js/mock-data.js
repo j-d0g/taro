@@ -5,21 +5,21 @@
  */
 
 const MOCK_PRODUCTS = [
-  // Fitness
-  {id:"ce5b9184",name:"EXCLUSIVE Clinique Moisture Surge Hydration Skin Heroes Set",vertical:"Fitness",subcategory:"Equipment",price:32.02,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",product_url:"https://www.lookfantastic.com/p/exclusive-clinique-moisture-surge-hydration-skin-heroes-set/17696069/",description:"Clinique Moisture Surge Hydration Skin Heroes Set with four full-sized skincare essentials."},
-  {id:"4473f3e5",name:"L'Oreal Men Expert Invincible Sport 96H Roll On Anti-Perspirant Deodorant 50ml",vertical:"Fitness",subcategory:"Tech",price:19.18,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/12183657-1834927998090174.jpg",product_url:"https://www.lookfantastic.com/p/l-oreal-men-expert-invincible-sport-96h-roll-on-anti-perspirant-deodorant-50ml/12183657/",description:"Sport roll-on anti-perspirant enriched with Magnesia for 96-hour protection."},
-  {id:"819fc0e9",name:"Clinique Take The Day Off Cleansing Balm 125ml",vertical:"Fitness",subcategory:"Accessories",price:31.76,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/11144730-1435173069197254.jpg",product_url:"https://www.lookfantastic.com/p/clinique-take-the-day-off-cleansing-balm-125ml/11144730/",description:"Lightweight cleansing balm that dissolves makeup, sunscreen and impurities."},
-  // Beauty
-  {id:"f9471562",name:"Shark SilkiPro Straight Hair Straightener + Dryer in One Tool",vertical:"Beauty",subcategory:"Tools",price:6.23,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17726736-3765312733647679.jpg",product_url:"https://www.lookfantastic.com/p/shark-silkipro-straight-hair-straightener-dryer-in-one-tool-plum-satin/17726736/",description:"2-in-1 straightener and dryer with HeatSense Ceramic Plates and rapid-dry technology."},
-  {id:"3c883b9d",name:"ESPA Bergamot and Jasmine Bath and Shower Gel 250ml",vertical:"Beauty",subcategory:"Bath & Body",price:48.96,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",product_url:"https://www.lookfantastic.com/p/espa-bergamot-jasmine-bath-shower-gel/12226515/",description:"Bath and shower gel with pure essential oils of bergamot and jasmine. Soap-free formula."},
-  {id:"4b967866",name:"Stylpro Heated LED Electric Gua Sha",vertical:"Beauty",subcategory:"Tools",price:38.50,avg_rating:4.3,image_url:"https://static.thcdn.com/productimg/original/16718539-6375309095782284.jpg",product_url:"https://www.lookfantastic.com/p/stylpro-heated-led-electric-gua-sha/16718539/",description:"Heated facial massage tool with LED therapy for skin rejuvenation."},
-  {id:"ad0a798e",name:"ESPA Bergamot and Jasmine Bath and Shower Gel 250ml",vertical:"Beauty",subcategory:"Bath & Body",price:22.50,avg_rating:4.6,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",product_url:"https://www.lookfantastic.com/p/espa-bergamot-jasmine-bath-shower-gel/12226515/",description:"Aromatic shower gel with bergamot, jasmine and patchouli essential oils."},
-  // Wellness
-  {id:"8d777214",name:"The INKEY List Starter Retinol Serum 30ml",vertical:"Wellness",subcategory:"Home Wellness",price:32.48,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/17538813-1504888839476082.jpg",product_url:"https://www.lookfantastic.com/p/the-inkey-list-starter-retinol-serum-30ml/17538813/",description:"Starter retinol serum for improving skin texture and reducing visible signs of ageing."},
-  {id:"728cfef9",name:"The Ordinary The Skin Support Set (Worth \u00a313.80)",vertical:"Wellness",subcategory:"Home Wellness",price:28.54,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/15061739-2215091651791714.jpg",product_url:"https://www.lookfantastic.com/p/the-ordinary-the-skin-support-set/15061739/",description:"Skincare set with Hyaluronic Acid 2% + B5 and Niacinamide 10% + Zinc 1%."},
-  {id:"35bd74b6",name:"Bobbi Brown Vitamin Enriched Face Base 50ml",vertical:"Wellness",subcategory:"Family Health",price:31.16,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/11512195-1075217807350538.jpg",product_url:"https://www.lookfantastic.com/p/bobbi-brown-vitamin-enriched-face-base-50ml/11512195/",description:"Bestselling hybrid primer and moisturiser enriched with hyaluronic acid, shea butter."},
-  {id:"dc82d7e8",name:"Weleda Skin Food 75ml",vertical:"Wellness",subcategory:"Family Health",price:23.34,avg_rating:4.2,image_url:"https://static.thcdn.com/productimg/original/10540680-1175050072684498.jpg",product_url:"https://www.lookfantastic.com/p/weleda-skin-food-75ml/10540680/",description:"Award-winning intensive moisturizing cream for dry skin with wild pansy and calendula."},
-  {id:"1065dbb6",name:"EXCLUSIVE Clinique Moisture Surge Hydration Skin Heroes Set",vertical:"Wellness",subcategory:"Mindfulness",price:30.77,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",product_url:"https://www.lookfantastic.com/p/exclusive-clinique-moisture-surge-hydration-skin-heroes-set/17696069/",description:"Clinique Moisture Surge Hydration Skin Heroes Set with four full-sized skincare essentials."},
+  // Skincare
+  {id:"ce5b9184",name:"EXCLUSIVE Clinique Moisture Surge Hydration Skin Heroes Set",vertical:"Skincare",subcategory:"Moisturisers",price:32.02,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",product_url:"https://www.lookfantastic.com/p/exclusive-clinique-moisture-surge-hydration-skin-heroes-set/17696069/",description:"Clinique Moisture Surge Hydration Skin Heroes Set with four full-sized skincare essentials."},
+  {id:"819fc0e9",name:"Clinique Take The Day Off Cleansing Balm 125ml",vertical:"Skincare",subcategory:"Cleansers",price:31.76,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/11144730-1435173069197254.jpg",product_url:"https://www.lookfantastic.com/p/clinique-take-the-day-off-cleansing-balm-125ml/11144730/",description:"Lightweight cleansing balm that dissolves makeup, sunscreen and impurities."},
+  {id:"4b967866",name:"Stylpro Heated LED Electric Gua Sha",vertical:"Skincare",subcategory:"Tools",price:38.50,avg_rating:4.3,image_url:"https://static.thcdn.com/productimg/original/16718539-6375309095782284.jpg",product_url:"https://www.lookfantastic.com/p/stylpro-heated-led-electric-gua-sha/16718539/",description:"Heated facial massage tool with LED therapy for skin rejuvenation."},
+  {id:"8d777214",name:"The INKEY List Starter Retinol Serum 30ml",vertical:"Skincare",subcategory:"Serums",price:32.48,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/17538813-1504888839476082.jpg",product_url:"https://www.lookfantastic.com/p/the-inkey-list-starter-retinol-serum-30ml/17538813/",description:"Starter retinol serum for improving skin texture and reducing visible signs of ageing."},
+  {id:"728cfef9",name:"The Ordinary The Skin Support Set (Worth \u00a313.80)",vertical:"Skincare",subcategory:"Sets",price:28.54,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/15061739-2215091651791714.jpg",product_url:"https://www.lookfantastic.com/p/the-ordinary-the-skin-support-set/15061739/",description:"Skincare set with Hyaluronic Acid 2% + B5 and Niacinamide 10% + Zinc 1%."},
+  {id:"35bd74b6",name:"Bobbi Brown Vitamin Enriched Face Base 50ml",vertical:"Skincare",subcategory:"Moisturisers",price:31.16,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/11512195-1075217807350538.jpg",product_url:"https://www.lookfantastic.com/p/bobbi-brown-vitamin-enriched-face-base-50ml/11512195/",description:"Bestselling hybrid primer and moisturiser enriched with hyaluronic acid, shea butter."},
+  {id:"dc82d7e8",name:"Weleda Skin Food 75ml",vertical:"Skincare",subcategory:"Moisturisers",price:23.34,avg_rating:4.2,image_url:"https://static.thcdn.com/productimg/original/10540680-1175050072684498.jpg",product_url:"https://www.lookfantastic.com/p/weleda-skin-food-75ml/10540680/",description:"Award-winning intensive moisturizing cream for dry skin with wild pansy and calendula."},
+  // Haircare
+  {id:"f9471562",name:"Shark SilkiPro Straight Hair Straightener + Dryer in One Tool",vertical:"Haircare",subcategory:"Hair Tools",price:6.23,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17726736-3765312733647679.jpg",product_url:"https://www.lookfantastic.com/p/shark-silkipro-straight-hair-straightener-dryer-in-one-tool-plum-satin/17726736/",description:"2-in-1 straightener and dryer with HeatSense Ceramic Plates and rapid-dry technology."},
+  // Body & Fragrance
+  {id:"4473f3e5",name:"L'Oreal Men Expert Invincible Sport 96H Roll On Anti-Perspirant Deodorant 50ml",vertical:"Body & Fragrance",subcategory:"Deodorant",price:19.18,avg_rating:4.0,image_url:"https://static.thcdn.com/productimg/original/12183657-1834927998090174.jpg",product_url:"https://www.lookfantastic.com/p/l-oreal-men-expert-invincible-sport-96h-roll-on-anti-perspirant-deodorant-50ml/12183657/",description:"Sport roll-on anti-perspirant enriched with Magnesia for 96-hour protection."},
+  {id:"3c883b9d",name:"ESPA Bergamot and Jasmine Bath and Shower Gel 250ml",vertical:"Body & Fragrance",subcategory:"Bath & Shower",price:48.96,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",product_url:"https://www.lookfantastic.com/p/espa-bergamot-jasmine-bath-shower-gel/12226515/",description:"Bath and shower gel with pure essential oils of bergamot and jasmine. Soap-free formula."},
+  {id:"ad0a798e",name:"ESPA Bergamot and Jasmine Body Lotion 200ml",vertical:"Body & Fragrance",subcategory:"Body Moisturisers",price:22.50,avg_rating:4.6,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",product_url:"https://www.lookfantastic.com/p/espa-bergamot-jasmine-bath-shower-gel/12226515/",description:"Aromatic body lotion with bergamot, jasmine and patchouli essential oils."},
+  {id:"1065dbb6",name:"EXCLUSIVE Clinique Moisture Surge Travel Set",vertical:"Skincare",subcategory:"Sets",price:30.77,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg",product_url:"https://www.lookfantastic.com/p/exclusive-clinique-moisture-surge-hydration-skin-heroes-set/17696069/",description:"Clinique Moisture Surge travel-sized essentials for hydration on-the-go."},
 ];
 
 // Mock also_bought edges (product -also_bought-> product, derived from co-purchase)
@@ -58,9 +58,9 @@ const MOCK_CUSTOMER = {
 
 // Subcategory map per vertical (derived from products.csv vertical/subcategory columns)
 const MOCK_SUBCATEGORIES = {
-  "Fitness": ["Equipment", "Tech", "Nutrition", "Accessories", "Drinks"],
-  "Beauty": ["Skincare", "Tools", "Bath & Body", "Fragrance", "Body Care", "Accessories"],
-  "Wellness": ["Mindfulness", "Family Health", "Home Wellness", "Sleep", "Gifts", "Lifestyle"],
+  "Skincare": ["Moisturisers", "Cleansers", "Serums", "Tools", "Sets", "Eye Care", "Sun Care"],
+  "Haircare": ["Shampoo", "Conditioner", "Hair Treatments", "Styling", "Hair Tools"],
+  "Body & Fragrance": ["Bath & Shower", "Body Moisturisers", "Fragrance", "Deodorant", "Hand & Nail"],
 };
 
 // Mock graph traversal data for visualization
@@ -94,7 +94,7 @@ const MOCK_GRAPHS = [
       {id: "p1", label: "product:f9471562", type: "product"},
       {id: "p2", label: "product:4b967866", type: "product"},
       {id: "o1", label: "order:cc2999bc", type: "order"},
-      {id: "cat", label: "category:beauty__tools", type: "category"},
+      {id: "cat", label: "category:haircare__tools", type: "category"},
     ],
     edges: [
       {from: "q", to: "r1", label: "bm25", type: "bm25"},
@@ -129,14 +129,22 @@ const MOCK_RESPONSES = [
       {name: "graph_traverse", type: "graph", args: "product:8d777214 ->also_bought-> product:728cfef9"},
       {name: "get_record", type: "relational", args: "product:728cfef9 | direct lookup by source_id"},
     ],
+    products: [
+      {id:"8d777214",name:"The INKEY List Starter Retinol Serum 30ml",price:32.48,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/17538813-1504888839476082.jpg",vertical:"Skincare",subcategory:"Serums"},
+      {id:"728cfef9",name:"The Ordinary The Skin Support Set (Worth \u00a313.80)",price:28.54,avg_rating:4.5,image_url:"https://static.thcdn.com/productimg/original/15061739-2215091651791714.jpg",vertical:"Skincare",subcategory:"Sets"},
+    ],
     learn: "hybrid_search works best for product recommendations"
   },
   {
-    reply: "Looking at our Beauty range! Here's what stands out based on ratings and co-purchase patterns:\n\n1. **Shark SilkiPro Straightener** (\u00a36.23) \u2014 5-star, top rated in Tools. Via `also_bought`: frequently bought with the Gua Sha\n2. **ESPA Bergamot Shower Gel** (\u00a348.96) \u2014 5-star in Bath & Body\n\nReviews via `order->has_review->review` show overwhelmingly positive sentiment.",
+    reply: "Looking at our Haircare and Skincare range! Here's what stands out based on ratings and co-purchase patterns:\n\n1. **Shark SilkiPro Straightener** (\u00a36.23) \u2014 5-star, top rated in Hair Tools. Via `also_bought`: frequently bought with the Gua Sha\n2. **ESPA Bergamot Shower Gel** (\u00a348.96) \u2014 5-star in Bath & Shower\n\nReviews via `order->has_review->review` show overwhelmingly positive sentiment.",
     tool_calls: [
-      {name: "keyword_search", type: "bm25", args: "documents | BM25 'beauty tools' | doc_type='product'"},
+      {name: "keyword_search", type: "bm25", args: "documents | BM25 'haircare tools' | doc_type='product'"},
       {name: "graph_traverse", type: "graph", args: "order:cc2999bc ->has_review-> review | ->contains-> product"},
-      {name: "surrealql_query", type: "relational", args: "SELECT * FROM product WHERE vertical='Beauty' ORDER BY avg_rating DESC LIMIT 5"},
+      {name: "surrealql_query", type: "relational", args: "SELECT * FROM product WHERE vertical='Haircare' ORDER BY avg_rating DESC LIMIT 5"},
+    ],
+    products: [
+      {id:"f9471562",name:"Shark SilkiPro Straight Hair Straightener + Dryer in One Tool",price:6.23,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/17726736-3765312733647679.jpg",vertical:"Haircare",subcategory:"Hair Tools"},
+      {id:"3c883b9d",name:"ESPA Bergamot and Jasmine Bath and Shower Gel 250ml",price:48.96,avg_rating:5.0,image_url:"https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg",vertical:"Body & Fragrance",subcategory:"Bath & Shower"},
     ],
     learn: null
   },
@@ -146,6 +154,7 @@ const MOCK_RESPONSES = [
       {name: "semantic_search", type: "vector", args: "documents | HNSW cosine | doc_type='faq' | query='return policy'"},
       {name: "get_record", type: "relational", args: "learned_pattern:policy_routing | best_tool='semantic_search'"},
     ],
+    products: [],
     learn: "semantic_search on faq works best for policy questions"
   }
 ];
