@@ -52,6 +52,16 @@
 **Solution**: Add `QUERY_DELAY = 2.0` between queries. Separate infrastructure failures from logic failures.
 **Prevention**: Stress tests should distinguish "can the system handle the query?" from "can the system handle 43 queries in 2 minutes?"
 
+### L11: Test with Weaker Models to Find Hidden Bugs
+**Problem**: gpt-4o happened to avoid code paths with bugs (graph_traverse `->*` syntax, RecordID `.replace()`). It "worked" but only by luck.
+**Solution**: Test with gpt-4o-mini which calls tools more aggressively and hits more code paths. Found 2 real bugs gpt-4o masked.
+**Prevention**: Always validate with at least 2 model tiers. Weaker models are better fuzzers because they're less "polite" about tool calling.
+
+### L12: SurrealDB 3.0 Returns RecordID Objects, Not Strings
+**Problem**: `doc.get("source_id", "")` returns a `RecordID` object in SurrealDB 3.0, not a string. Calling `.replace()` on it crashes.
+**Solution**: Always wrap in `str()`: `str(doc.get("source_id", ""))`.
+**Prevention**: In SurrealDB 3.0, any field that references another record will be a RecordID. Always coerce to string before string operations.
+
 ## Patterns to Reuse
 
 ### The SurrealFS Pattern
