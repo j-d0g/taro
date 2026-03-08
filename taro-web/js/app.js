@@ -2,7 +2,35 @@
  * app.js — Main entry point. Wires everything together on DOMContentLoaded.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+async function buildVerticalTabs() {
+  const bar = document.getElementById('filterBar');
+  const countEl = document.getElementById('productCount');
+  try {
+    const verticals = await fetchVerticals();
+    // Insert vertical buttons before the count span
+    verticals.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-tab';
+      btn.dataset.vertical = v;
+      btn.textContent = v;
+      bar.insertBefore(btn, countEl);
+    });
+  } catch (e) {
+    // Fallback: hardcoded tabs
+    ['Skincare', 'Haircare', 'Body & Fragrance'].forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-tab';
+      btn.dataset.vertical = v;
+      btn.textContent = v;
+      bar.insertBefore(btn, countEl);
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Build vertical filter tabs from API
+  await buildVerticalTabs();
+
   // Render initial product grid
   renderProducts();
 
@@ -20,11 +48,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Check API health and show status
+  const apiOk = await checkApiHealth();
+  const badge = document.querySelector('.navbar-badge');
+  if (apiOk) {
+    badge.innerHTML = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:4px"></span>Powered by SurrealDB';
+    badge.style.borderColor = 'rgba(0,212,170,0.3)';
+  } else {
+    badge.innerHTML = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning);margin-right:4px"></span>Demo mode (mock data)';
+    badge.style.borderColor = 'rgba(255,170,0,0.3)';
+  }
+
   // Log startup info
   console.log(
     '%c Taro.ai %c Powered by SurrealDB ',
     'background: linear-gradient(135deg, #9600ff, #ff00a0); color: white; padding: 4px 8px; border-radius: 4px 0 0 4px; font-weight: bold;',
     'background: #15131D; color: #9B97B0; padding: 4px 8px; border-radius: 0 4px 4px 0;'
   );
-  console.log(`Mock mode: ${USE_MOCK ? 'ON' : 'OFF'} | API: ${API_BASE}`);
+  console.log(`API: ${API_BASE} | Status: ${apiOk ? 'connected' : 'offline (using mock data)'}`);
 });

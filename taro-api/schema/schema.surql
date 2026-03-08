@@ -30,11 +30,29 @@ DEFINE INDEX idx_documents_title ON documents FIELDS title
 DEFINE INDEX idx_documents_doc_type ON documents FIELDS doc_type;
 
 -- ============================================================
--- Customer
+-- User (customer / shopper profile)
+-- ============================================================
+DEFINE TABLE user SCHEMAFULL;
+
+DEFINE FIELD name ON user TYPE string;
+DEFINE FIELD email ON user TYPE option<string>;
+DEFINE FIELD city ON user TYPE option<string>;
+DEFINE FIELD age ON user TYPE option<int>;
+DEFINE FIELD profile_type ON user TYPE option<string>;       -- "skincare enthusiast", "fitness beginner", etc.
+DEFINE FIELD experience_level ON user TYPE option<string>;   -- "beginner", "intermediate", "advanced"
+DEFINE FIELD goals ON user TYPE option<array<string>>;       -- ["clear skin", "muscle gain"]
+DEFINE FIELD dietary_restrictions ON user TYPE option<array<string>>; -- ["vegan", "gluten-free"]
+DEFINE FIELD preferred_brands ON user TYPE option<array<string>>;
+DEFINE FIELD skin_type ON user TYPE option<string>;          -- "dry", "oily", "combination", "sensitive"
+DEFINE FIELD context ON user TYPE option<string>;            -- LLM-readable summary
+DEFINE FIELD memory ON user TYPE option<array<string>>;      -- key facts for personalisation
+
+-- ============================================================
+-- Customer (from CSV dataset)
 -- ============================================================
 DEFINE TABLE customer SCHEMAFULL;
 
-DEFINE FIELD name ON customer TYPE string;
+DEFINE FIELD name ON customer TYPE option<string>;
 DEFINE FIELD city ON customer TYPE option<string>;
 DEFINE FIELD state ON customer TYPE option<string>;
 
@@ -46,9 +64,14 @@ DEFINE TABLE product SCHEMAFULL;
 DEFINE FIELD name ON product TYPE string;
 DEFINE FIELD vertical ON product TYPE option<string>;
 DEFINE FIELD subcategory ON product TYPE option<string>;
+DEFINE FIELD category ON product TYPE option<string>;        -- alias for subcategory (used in fs_tools)
 DEFINE FIELD price ON product TYPE option<float>;
 DEFINE FIELD avg_rating ON product TYPE option<float>;
 DEFINE FIELD description ON product TYPE option<string>;
+DEFINE FIELD brand ON product TYPE option<string>;
+DEFINE FIELD ingredients ON product TYPE option<array<string>>;
+DEFINE FIELD tags ON product TYPE option<array<string>>;     -- "vegan", "bestseller", "new", etc.
+DEFINE FIELD dietary_tags ON product TYPE option<array<string>>; -- "vegan", "gluten-free", "organic"
 DEFINE FIELD weight_g ON product TYPE option<float>;
 DEFINE FIELD image_url ON product TYPE option<string>;
 DEFINE FIELD product_url ON product TYPE option<string>;
@@ -59,7 +82,11 @@ DEFINE FIELD created_at ON product TYPE datetime DEFAULT time::now();
 -- ============================================================
 DEFINE TABLE order SCHEMAFULL;
 
+DEFINE FIELD total ON order TYPE option<float>;
 DEFINE FIELD price ON order TYPE option<float>;
+DEFINE FIELD currency ON order TYPE option<string> DEFAULT 'GBP';
+DEFINE FIELD status ON order TYPE option<string>;            -- "delivered", "shipped", "processing"
+DEFINE FIELD order_date ON order TYPE option<datetime>;
 DEFINE FIELD created_at ON order TYPE datetime DEFAULT time::now();
 
 -- ============================================================
@@ -85,19 +112,39 @@ DEFINE FIELD level ON category TYPE string;                  -- "vertical" or "s
 DEFINE FIELD description ON category TYPE option<string>;
 
 -- ============================================================
--- Graph edges (6 total)
+-- Goal (fitness / wellness / beauty goals)
+-- ============================================================
+DEFINE TABLE goal SCHEMAFULL;
+
+DEFINE FIELD name ON goal TYPE string;
+DEFINE FIELD description ON goal TYPE option<string>;
+DEFINE FIELD vertical ON goal TYPE option<string>;           -- which vertical this goal relates to
+
+-- ============================================================
+-- Ingredient (key active ingredients across products)
+-- ============================================================
+DEFINE TABLE ingredient SCHEMAFULL;
+
+DEFINE FIELD name ON ingredient TYPE string;
+DEFINE FIELD role ON ingredient TYPE option<string>;         -- "hydration", "anti-aging", "exfoliation"
+DEFINE FIELD category ON ingredient TYPE option<string>;     -- "skincare", "nutrition", "wellness"
+DEFINE FIELD description ON ingredient TYPE option<string>;
+DEFINE FIELD common_in ON ingredient TYPE option<array<string>>; -- product types it appears in
+
+-- ============================================================
+-- Graph edges (9 total)
 -- ============================================================
 
--- customer -placed-> order (from orders.csv: customer_id + order_id)
+-- customer -placed-> order
 DEFINE TABLE placed SCHEMAFULL TYPE RELATION IN customer OUT order;
 
--- order -contains-> product (from orders.csv: order_id + product_id)
+-- order -contains-> product
 DEFINE TABLE contains SCHEMAFULL TYPE RELATION IN order OUT product;
 
--- order -has_review-> review (from reviews.csv: order_id + review_id)
+-- order -has_review-> review
 DEFINE TABLE has_review SCHEMAFULL TYPE RELATION IN order OUT review;
 
--- product -also_bought-> product (derived: co-purchased by same customer)
+-- product -also_bought-> product (derived: co-purchased by same user)
 DEFINE TABLE also_bought SCHEMAFULL TYPE RELATION IN product OUT product;
 DEFINE FIELD weight ON also_bought TYPE int DEFAULT 1;
 
@@ -106,6 +153,17 @@ DEFINE TABLE belongs_to SCHEMAFULL TYPE RELATION IN product OUT category;
 
 -- category -child_of-> category (subcategory -> vertical)
 DEFINE TABLE child_of SCHEMAFULL TYPE RELATION IN category OUT category;
+
+-- product -supports_goal-> goal
+DEFINE TABLE supports_goal SCHEMAFULL TYPE RELATION IN product OUT goal;
+
+-- product -contains_ingredient-> ingredient
+DEFINE TABLE contains_ingredient SCHEMAFULL TYPE RELATION IN product OUT ingredient;
+DEFINE FIELD concentration ON contains_ingredient TYPE option<string>; -- "active", "trace"
+
+-- product -related_to-> product (cross-reference: similar/complementary)
+DEFINE TABLE related_to SCHEMAFULL TYPE RELATION IN product OUT product;
+DEFINE FIELD reason ON related_to TYPE option<string>;       -- "same category", "complementary", "alternative"
 
 -- ============================================================
 -- Web cache (for Tavily results)

@@ -33,7 +33,7 @@ async def web_search(query: str) -> str:
                 "time::now() - cached_at < 24h LIMIT 1",
                 {"query": query},
             )
-            cached = cache_result[0].get("result", []) if cache_result else []
+            cached = cache_result or []
             if cached:
                 logger.info("web_search: returning cached result")
                 results = cached[0].get("results", [])

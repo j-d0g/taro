@@ -7,7 +7,7 @@ let threadId = crypto.randomUUID();
 let queryCount = 0;
 let learnedCount = 0;
 
-// ── Toggle chat panel ──────────────────────────────────
+// ── Toggle chat panel ──────────────────────────────────────
 
 function toggleChat() {
   chatOpen = !chatOpen;
@@ -16,9 +16,9 @@ function toggleChat() {
   if (chatOpen) document.getElementById('chatInput').focus();
 }
 
-// ── Add message to chat ────────────────────────────────
+// ── Add message to chat ────────────────────────────────────
 
-function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = null) {
+function addMessage(role, content, toolCalls = [], learnMsg = null, graphData = null) {
   const container = document.getElementById('chatMessages');
 
   const msgDiv = document.createElement('div');
@@ -33,9 +33,9 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
   // Tool trace cards (SurrealDB multi-model visualization)
   if (toolCalls.length > 0) {
     const iconMap = {
-      vector:  '&#128269;',
-      graph:   '&#128760;',
-      bm25:    '&#128196;',
+      vector:     '&#128269;',
+      graph:      '&#128760;',
+      bm25:       '&#128196;',
       relational: '&#9881;',
     };
 
@@ -48,15 +48,15 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
           ${tc.name}
           <span class="tool-label ${tc.type}">${tc.type}</span>
         </div>
-        <div class="tool-card-detail">${tc.args}</div>
+        <div class="tool-card-detail">${tc.args || ''}</div>
       </div>
     `).join('');
     msgDiv.appendChild(traceDiv);
   }
 
-  // Graph visualization
-  if (graphIdx !== null && typeof MOCK_GRAPHS !== 'undefined' && MOCK_GRAPHS[graphIdx]) {
-    const graphEl = renderGraphViz(MOCK_GRAPHS[graphIdx]);
+  // Graph visualization (only when graph data is explicitly provided)
+  if (graphData) {
+    const graphEl = renderGraphViz(graphData);
     msgDiv.appendChild(graphEl);
   }
 
@@ -72,7 +72,7 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
   container.scrollTop = container.scrollHeight;
 }
 
-// ── Typing indicator ───────────────────────────────────
+// ── Typing indicator ───────────────────────────────────────
 
 function showTyping() {
   const container = document.getElementById('chatMessages');
@@ -94,9 +94,7 @@ function removeTyping() {
   if (el) el.remove();
 }
 
-// ── Send message ───────────────────────────────────────
-
-let graphResponseIdx = 0;
+// ── Send message ───────────────────────────────────────────
 
 async function sendMessage() {
   const input = document.getElementById('chatInput');
@@ -111,8 +109,11 @@ async function sendMessage() {
     const resp = await sendChatMessage(text, threadId);
     removeTyping();
 
+    if (resp.thread_id) threadId = resp.thread_id;
+
     // Update stats
-    queryCount += (resp.tool_calls || []).length;
+    const tcCount = (resp.tool_calls || []).length;
+    queryCount += tcCount;
     document.getElementById('queryCount').textContent = queryCount;
 
     if (resp.learn) {
@@ -120,11 +121,16 @@ async function sendMessage() {
       document.getElementById('learnedCount').textContent = learnedCount;
     }
 
-    // Graph index cycles through MOCK_GRAPHS
-    const gIdx = graphResponseIdx % (typeof MOCK_GRAPHS !== 'undefined' ? MOCK_GRAPHS.length : 1);
-    graphResponseIdx++;
+    // Only show graph for graph-traverse tool calls
+    const hasGraphCall = (resp.tool_calls || []).some(tc =>
+      tc.type === 'graph' || (tc.name && tc.name.includes('graph'))
+    );
+    let graphData = null;
+    if (hasGraphCall && typeof MOCK_GRAPHS !== 'undefined' && MOCK_GRAPHS.length > 0) {
+      graphData = MOCK_GRAPHS[queryCount % MOCK_GRAPHS.length];
+    }
 
-    addMessage('agent', formatMarkdown(resp.reply), resp.tool_calls || [], resp.learn, gIdx);
+    addMessage('agent', formatMarkdown(resp.reply), resp.tool_calls || [], resp.learn, graphData);
 
     // Show unread dot if chat is closed
     if (!chatOpen) {
@@ -136,15 +142,17 @@ async function sendMessage() {
   }
 }
 
-// ── Markdown-lite formatter ────────────────────────────
+// ── Markdown-lite formatter ────────────────────────────────
 
 function formatMarkdown(text) {
+  if (!text) return '';
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code style="background:var(--bg-surface);padding:1px 4px;border-radius:3px;font-size:11px">$1</code>')
     .replace(/\n/g, '<br>');
 }
 
-// ── Keyboard shortcut (Escape to close) ────────────────
+// ── Keyboard shortcut (Escape to close) ────────────────────
 
 function initChatKeyboard() {
   document.addEventListener('keydown', (e) => {

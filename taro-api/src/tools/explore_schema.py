@@ -20,14 +20,14 @@ async def explore_schema(target: str = "") -> str:
         async with get_db() as db:
             if not target:
                 result = await db.query("INFO FOR DB")
-                tables = result[0].get("result", {}) if result else {}
+                tables = result if isinstance(result, dict) else (result[0] if result else {})
                 if isinstance(tables, dict) and "tables" in tables:
                     table_names = list(tables["tables"].keys())
                     return f"**Database tables:** {', '.join(table_names)}"
                 return f"**Database info:** {tables}"
             else:
                 result = await db.query(f"INFO FOR TABLE {target}")
-                info = result[0].get("result", {}) if result else {}
+                info = result if isinstance(result, dict) else (result[0] if result else {})
                 lines = [f"**Table: {target}**"]
                 if isinstance(info, dict):
                     if "fields" in info:
