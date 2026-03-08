@@ -26,8 +26,8 @@
       <input type="text" placeholder="Search products..." id="searchInput" />
     </div>
     <button class="profile-btn" id="profileBtn" onclick="toggleProfile()">
-      <span class="profile-avatar">D</span>
-      <span class="profile-name">Diego</span>
+      <span class="profile-avatar">C</span>
+      <span class="profile-name">Charlotte</span>
     </button>
   </div>
 </nav>
@@ -78,7 +78,7 @@
 <div class="profile-overlay" id="profileOverlay" onclick="toggleProfile()">
   <div class="profile-panel" onclick="event.stopPropagation()">
     <div class="profile-header">
-      <div class="profile-header-avatar">D</div>
+      <div class="profile-header-avatar">C</div>
       <div>
         <div class="profile-header-name" id="profileName"></div>
         <div class="profile-header-location" id="profileLocation"></div>
@@ -86,9 +86,14 @@
       <button class="modal-close" onclick="toggleProfile()">&#10005;</button>
     </div>
     <div class="profile-stats" id="profileStats"></div>
+    <div id="profileBio"></div>
+    <div id="profileBeauty"></div>
+    <div id="profileGoals"></div>
+    <div id="profileCategories"></div>
     <h3 class="profile-section-title">Purchase History</h3>
     <p class="profile-section-subtitle">via <code>customer->placed->order->contains->product</code></p>
     <div class="profile-purchases" id="profilePurchases"></div>
+    <div id="profileReviewStats"></div>
     <h3 class="profile-section-title">Recommended For You</h3>
     <p class="profile-section-subtitle">via <code>product->also_bought->product</code> graph traversal</p>
     <div class="profile-recommendations" id="profileRecommendations"></div>

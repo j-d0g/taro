@@ -1514,6 +1514,200 @@ body {
   color: var(--text-secondary);
 }
 
+/* ── Profile Bio ──────────────────────────────────── */
+.profile-bio {
+  border-left: 3px solid var(--gold);
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  background: var(--gold-bg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── Beauty Profile ──────────────────────────────── */
+.profile-beauty-card {
+  margin-bottom: 24px;
+}
+
+.beauty-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.beauty-tag {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.beauty-concern {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--gold-bg);
+  border: 1px solid rgba(201, 169, 110, 0.25);
+  color: var(--gold-hover);
+}
+
+.beauty-allergy {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(201, 64, 64, 0.08);
+  border: 1px solid rgba(201, 64, 64, 0.2);
+  color: var(--error);
+}
+
+.beauty-subsection {
+  margin-top: 12px;
+}
+
+.beauty-subsection-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.profile-brand-tag {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(130, 100, 180, 0.08);
+  border: 1px solid rgba(130, 100, 180, 0.2);
+  color: #7B5EA7;
+}
+
+/* ── Inferred Goals ──────────────────────────────── */
+.profile-goal-tag {
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(74, 157, 91, 0.08);
+  border: 1px solid rgba(74, 157, 91, 0.2);
+  color: var(--success);
+  cursor: help;
+}
+
+/* ── Top Categories ──────────────────────────────── */
+.profile-categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.profile-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-cat-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.profile-cat-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-surface);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.profile-cat-bar {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.profile-cat-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 20px;
+  text-align: right;
+}
+
+/* ── Review Activity ─────────────────────────────── */
+.profile-review-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.profile-review-stat {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+}
+
+.profile-review-stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.profile-review-stat-label {
+  display: block;
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.profile-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.profile-review-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.profile-review-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.profile-review-card p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 /* ── Loading Skeleton ──────────────────────────────── */
 @keyframes shimmer {
   0% { background-position: -200% 0; }

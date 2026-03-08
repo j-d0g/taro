@@ -44,16 +44,104 @@ const MOCK_REVIEWS = {
   ],
 };
 
-// Mock customer — real data from trimmed/customers.csv + orders.csv
+// Mock customer — Charlotte Gong demo profile with rich attributes
 // Schema: customer -placed-> order -contains-> product
 const MOCK_CUSTOMER = {
-  id: "dfa8a1b5",  // dfa8a1b565b79938d84942f83d88a2f7
-  name: "Diego Carvalho",
-  city: "forquilhinha",
-  state: "SC",
+  id: "charlotte_gong",
+  name: "Charlotte Gong",
+  city: "London",
+  state: null,
   orders: [
-    {order_id: "cc2999bc", price: 59.80, products: ["8d777214", "728cfef9"]},
+    {order_id: "charlotte_ord_1", price: 61.30, products: ["457953cd", "919f3715", "70c32528"]},
+    {order_id: "charlotte_ord_2", price: 24.79, products: ["94e25ee5", "07761550"]},
+    {order_id: "charlotte_ord_3", price: 50.00, products: ["c6336fa9"]},
+    {order_id: "charlotte_ord_4", price: 43.90, products: ["fff0a542", "3fcd8dfe"]},
+    {order_id: "charlotte_ord_5", price: 33.00, products: ["ace5d86c"]},
   ],
+};
+
+// Rich customer profile mock (matches /customers/{id}/profile endpoint)
+const MOCK_CUSTOMER_PROFILE = {
+  id: "charlotte_gong",
+  name: "Charlotte Gong",
+  city: "London",
+  state: null,
+  age: 27,
+  bio: "Junior architect in London with a passion for Korean-inspired multi-step skincare. Combination skin with dry cheeks and an oily T-zone. Focused on hydration and early anti-aging prevention.",
+  skin_type: "Combination",
+  hair_type: "Fine, straight",
+  concerns: ["Hydration", "Anti-aging prevention", "T-zone oil control", "Sensitivity"],
+  preferences: ["Korean skincare", "Multi-step routines", "Fragrance-free", "Lightweight textures"],
+  allergies: ["Synthetic fragrance", "Denatured alcohol"],
+  profile_type: "Skincare enthusiast",
+  experience_level: "Intermediate",
+  preferred_brands: ["LANEIGE", "Clinique", "The INKEY List", "Weleda", "NEOM"],
+  orders: [
+    {
+      id: "charlotte_ord_1", price: 61.30, status: "delivered", currency: "GBP",
+      products: [
+        {id: "457953cd", name: "LANEIGE Water Bank Blue Hyaluronic Cream", price: 19.50, vertical: "Skincare", subcategory: "Moisturisers", image_url: "https://static.thcdn.com/productimg/original/14178931-1255134637498566.jpg"},
+        {id: "919f3715", name: "LANEIGE Lip Sleeping Mask", price: 16.80, vertical: "Skincare", subcategory: "Lip Care", image_url: "https://static.thcdn.com/productimg/original/14178931-1255134637498566.jpg"},
+        {id: "70c32528", name: "LANEIGE Water Bank Blue Hyaluronic Cleansing Gel", price: 25.00, vertical: "Skincare", subcategory: "Cleansers", image_url: "https://static.thcdn.com/productimg/original/14178931-1255134637498566.jpg"},
+      ],
+    },
+    {
+      id: "charlotte_ord_2", price: 24.79, status: "delivered", currency: "GBP",
+      products: [
+        {id: "94e25ee5", name: "The INKEY List Ceramide Night Treatment", price: 15.19, vertical: "Skincare", subcategory: "Moisturisers", image_url: "https://static.thcdn.com/productimg/original/17538813-1504888839476082.jpg"},
+        {id: "07761550", name: "The INKEY List Salicylic Acid Cleanser", price: 9.60, vertical: "Skincare", subcategory: "Cleansers", image_url: "https://static.thcdn.com/productimg/original/17538813-1504888839476082.jpg"},
+      ],
+    },
+    {
+      id: "charlotte_ord_3", price: 50.00, status: "delivered", currency: "GBP",
+      products: [
+        {id: "c6336fa9", name: "Clinique Moisture Surge 100H Gift Set", price: 50.00, vertical: "Skincare", subcategory: "Sets", image_url: "https://static.thcdn.com/productimg/original/17696069-9775316280151439.jpg"},
+      ],
+    },
+    {
+      id: "charlotte_ord_4", price: 43.90, status: "delivered", currency: "GBP",
+      products: [
+        {id: "fff0a542", name: "NEOM Perfect Night's Sleep Essential Oil Blend", price: 18.40, vertical: "Body & Fragrance", subcategory: "Wellness", image_url: "https://static.thcdn.com/productimg/original/12226515-1005188546067853.jpg"},
+        {id: "3fcd8dfe", name: "Weleda Skin Food Original Ultra-Rich Face Care Kit", price: 25.50, vertical: "Skincare", subcategory: "Sets", image_url: "https://static.thcdn.com/productimg/original/10540680-1175050072684498.jpg"},
+      ],
+    },
+    {
+      id: "charlotte_ord_5", price: 33.00, status: "delivered", currency: "GBP",
+      products: [
+        {id: "ace5d86c", name: "LANEIGE Donut Delight Lip Sleeping Mask Duo", price: 33.00, vertical: "Skincare", subcategory: "Lip Care", image_url: "https://static.thcdn.com/productimg/original/14178931-1255134637498566.jpg"},
+      ],
+    },
+  ],
+  reviews: [
+    {id: "charlotte_rev_1", score: 5, comment: "This cream is my holy grail — lightweight but deeply hydrating. My dry cheeks feel plump all day without making my T-zone greasy.", sentiment: "positive"},
+    {id: "charlotte_rev_2", score: 4, comment: "Love the ceramide treatment for overnight repair. Woke up with visibly smoother skin. Only wish the tube was bigger.", sentiment: "positive"},
+    {id: "charlotte_rev_3", score: 5, comment: "The Clinique set is perfect for travel. Moisture Surge is the best gel-cream I've tried — bouncy, fragrance-free hydration.", sentiment: "positive"},
+    {id: "charlotte_rev_4", score: 3, comment: "The Weleda kit is very rich — almost too heavy for my combination skin. Great for winter evenings on dry patches only.", sentiment: "neutral"},
+  ],
+  review_stats: {
+    count: 4,
+    avg_score: 4.3,
+    sentiment: {positive: 3, neutral: 1, negative: 0},
+  },
+  inferred_goals: [
+    {id: "hydration", name: "Deep Hydration", description: "Products that deliver long-lasting moisture"},
+    {id: "anti_aging_prevention", name: "Anti-aging Prevention", description: "Early intervention to prevent fine lines"},
+    {id: "gentle_cleansing", name: "Gentle Cleansing", description: "Mild cleansers that don't strip natural oils"},
+    {id: "barrier_repair", name: "Skin Barrier Repair", description: "Ceramides and lipids to strengthen the moisture barrier"},
+    {id: "relaxation", name: "Relaxation & Wellness", description: "Aromatherapy and self-care rituals"},
+  ],
+  top_categories: [
+    {name: "Moisturisers", id: "skincare__moisturisers", count: 3},
+    {name: "Cleansers", id: "skincare__cleansers", count: 2},
+    {name: "Lip Care", id: "skincare__lip_care", count: 2},
+    {name: "Sets", id: "skincare__sets", count: 2},
+    {name: "Wellness", id: "body_and_fragrance__wellness", count: 1},
+  ],
+  stats: {
+    total_spent: 212.99,
+    order_count: 5,
+    unique_products: 9,
+  },
 };
 
 // Subcategory map per vertical (derived from products.csv vertical/subcategory columns)

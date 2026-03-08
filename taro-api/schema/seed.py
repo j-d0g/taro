@@ -158,6 +158,33 @@ async def seed():
                 )
             print(f"  {min(i + EMBED_BATCH, len(customers_raw))}/{len(customers_raw)}")
 
+        # ── 3b. Charlotte Gong (rich demo customer) ──────────
+        print("  + Charlotte Gong (demo customer with rich profile)")
+        await db.query(
+            "CREATE customer:`charlotte_gong` SET "
+            "name = $name, city = $city, state = $state, "
+            "skin_type = $skin_type, hair_type = $hair_type, "
+            "concerns = $concerns, preferences = $preferences, "
+            "allergies = $allergies, age = $age, bio = $bio, "
+            "profile_type = $profile_type, experience_level = $experience_level, "
+            "preferred_brands = $preferred_brands",
+            {
+                "name": "Charlotte Gong",
+                "city": "London",
+                "state": None,
+                "skin_type": "Combination",
+                "hair_type": "Fine, straight",
+                "concerns": ["Hydration", "Anti-aging prevention", "T-zone oil control", "Sensitivity"],
+                "preferences": ["Korean skincare", "Multi-step routines", "Fragrance-free", "Lightweight textures"],
+                "allergies": ["Synthetic fragrance", "Denatured alcohol"],
+                "age": 27,
+                "bio": "Junior architect in London with a passion for Korean-inspired multi-step skincare. Combination skin with dry cheeks and an oily T-zone. Focused on hydration and early anti-aging prevention.",
+                "profile_type": "Skincare enthusiast",
+                "experience_level": "Intermediate",
+                "preferred_brands": ["LANEIGE", "Clinique", "The INKEY List", "Weleda", "NEOM"],
+            },
+        )
+
         # ── 4. Products + belongs_to ──────────────────────────
         print("[5/9] Seeding products...")
         product_ids = set()
@@ -217,6 +244,58 @@ async def seed():
                 customer_products[cid].add(pid)
             print(f"  {min(i + EMBED_BATCH, len(orders_raw))}/{len(orders_raw)}")
 
+        # ── 5b. Charlotte's orders ────────────────────────────
+        print("  + Charlotte's 5 orders")
+        charlotte_orders = [
+            {
+                "id": "charlotte_ord_1",
+                "total": 61.30,
+                "products": ["457953cd", "919f3715", "70c32528"],
+            },
+            {
+                "id": "charlotte_ord_2",
+                "total": 24.79,
+                "products": ["94e25ee5", "07761550"],
+            },
+            {
+                "id": "charlotte_ord_3",
+                "total": 50.00,
+                "products": ["c6336fa9"],
+            },
+            {
+                "id": "charlotte_ord_4",
+                "total": 43.90,
+                "products": ["fff0a542", "3fcd8dfe"],
+            },
+            {
+                "id": "charlotte_ord_5",
+                "total": 33.00,
+                "products": ["ace5d86c"],
+            },
+        ]
+        charlotte_product_ids: set[str] = set()
+        for co in charlotte_orders:
+            oid = co["id"]
+            await db.query(
+                f"CREATE order:`{oid}` SET price = $price, total = $total, "
+                "status = 'delivered', currency = 'GBP'",
+                {"price": co["total"], "total": co["total"]},
+            )
+            await db.query(f"RELATE customer:`charlotte_gong`->placed->order:`{oid}`")
+            for pid in co["products"]:
+                # Use first 8 chars as prefix — match full ID from products_raw
+                full_pid = None
+                for pr in products_raw:
+                    if pr["product_id"].startswith(pid):
+                        full_pid = pr["product_id"]
+                        break
+                if full_pid:
+                    await db.query(f"RELATE order:`{oid}`->contains->product:`{full_pid}`")
+                    charlotte_product_ids.add(full_pid)
+                    customer_products["charlotte_gong"].add(full_pid)
+                else:
+                    print(f"    WARNING: Product {pid}... not found in CSV")
+
         # ── 6. Reviews + has_review ───────────────────────────
         print("[7/9] Seeding reviews...")
         order_ids_in_db = set(row["order_id"] for row in orders_raw)
@@ -254,6 +333,54 @@ async def seed():
                 await db.query(f"RELATE order:`{oid}`->has_review->review:`{rid}`")
 
             print(f"  {min(i + EMBED_BATCH, len(reviews_raw))}/{len(reviews_raw)}")
+
+        # ── 6b. Charlotte's reviews ───────────────────────────
+        print("  + Charlotte's 4 reviews")
+        charlotte_reviews = [
+            {
+                "id": "charlotte_rev_1",
+                "order": "charlotte_ord_1",
+                "score": 5,
+                "comment": "This cream is my holy grail — lightweight but deeply hydrating. My dry cheeks feel plump all day without making my T-zone greasy.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "charlotte_rev_2",
+                "order": "charlotte_ord_2",
+                "score": 4,
+                "comment": "Love the ceramide treatment for overnight repair. Woke up with visibly smoother skin. Only wish the tube was bigger.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "charlotte_rev_3",
+                "order": "charlotte_ord_3",
+                "score": 5,
+                "comment": "The Clinique set is perfect for travel. Moisture Surge is the best gel-cream I've tried — bouncy, fragrance-free hydration.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "charlotte_rev_4",
+                "order": "charlotte_ord_4",
+                "score": 3,
+                "comment": "The Weleda kit is very rich — almost too heavy for my combination skin. Great for winter evenings on dry patches only.",
+                "sentiment": "neutral",
+            },
+        ]
+        review_texts = [r["comment"] for r in charlotte_reviews]
+        review_vecs = await embeddings.aembed_documents(review_texts)
+        for r, vec in zip(charlotte_reviews, review_vecs):
+            await db.query(
+                f"CREATE review:`{r['id']}` SET "
+                "score = $score, comment = $comment, sentiment = $sentiment, "
+                "embedding = $embedding",
+                {
+                    "score": r["score"],
+                    "comment": r["comment"],
+                    "sentiment": r["sentiment"],
+                    "embedding": vec,
+                },
+            )
+            await db.query(f"RELATE order:`{r['order']}`->has_review->review:`{r['id']}`")
 
         # ── 7. Also-bought edges (derived from co-purchase) ───
         print("[8/9] Seeding also_bought edges...")
