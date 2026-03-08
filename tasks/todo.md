@@ -1,70 +1,48 @@
-# Harness Improvement Plan
+# TODO - Taro.ai Harness
 
-Based on stress test (51.1% pass rate) and code review.
+## Completed (this session)
 
-## P0: Critical Fixes (Must complete)
+- [x] Restore and consolidate 13 tools -> 9 SurrealFS tools
+- [x] Fix KNN `<|N|>` and BM25 `@1@` operators for SurrealDB 3.0
+- [x] Rewrite system prompt with GATHER->ACT->VERIFY + worked examples
+- [x] Fix graph_traverse with all 9 edge types + validation
+- [x] Fix explore_schema SurrealDB 3.0 result format
+- [x] Add error handling + rate limit retry in chat endpoint
+- [x] Add user context injection (user_id on ChatRequest)
+- [x] Add POST /distill memory distillation endpoint
+- [x] Complete schema.surql (user/order/review/goal/ingredient + all 9 edges)
+- [x] Add embedding LRU cache
+- [x] Fix graph_traverse `->*` syntax (SurrealDB 3.0 -> `->?`)
+- [x] Fix RecordID str coercion in find/grep
+- [x] Verify cross-model: gpt-4o, gpt-4o-mini, gpt-4.1, gpt-5.2, gpt-5.4 all pass
+- [x] Add stress-test + restart-api agents, Makefile targets
+- [x] Stress test: 95.3% (41/43)
 
-- [ ] **1. Restore and consolidate fs_tools + search tools into unified 8-tool set**
-  - Keep: `ls`, `cat`, `find`, `grep`, `tree` (SurrealFS metaphor)
-  - Keep: `graph_traverse`, `explore_schema`, `web_search`
-  - Remove duplicates: `hybrid_search` (= `find`), `keyword_search` (= `grep`), `semantic_search` (subset of `find`), `get_record` (= `cat`)
-  - Result: 8 tools, no overlap, filesystem metaphor preserved
-  - Update ALL_TOOLS in `__init__.py`
+## Backlog
 
-- [ ] **2. Fix the system prompt for unified toolset**
-  - Explicit GATHER -> ACT -> VERIFY phases
-  - Document ALL edge types (9 types)
-  - Strong enforcement: "ALWAYS use tools, never answer from memory"
-  - Tool decision matrix with clear routing
-  - Failure recovery instructions
-  - Few-shot examples for multi-hop chains
+### Next: Multi-Model Harness Optimisation
+**Priority**: High
+**Goal**: Compare GPT-5.4, Claude 4.6, Gemini 3.1 on the harness and find the best model for the task. Also explore if frontier models can raise the ceiling beyond 95.3%.
 
-- [ ] **3. Fix error handling in chat endpoint**
-  - Add try/except around agent invocation
-  - Return graceful error responses, not HTTP 500
-  - Already done in worktree, needs testing
+Tasks:
+- [ ] Top up Anthropic credits (currently depleted) and Gemini API (free tier exhausted)
+- [ ] Run full 43-query stress test on each model (gpt-5.4, claude-4.6, gemini-3.1)
+- [ ] Compare: tool selection accuracy, latency, cost per query, response quality
+- [ ] Identify model-specific prompt tuning opportunities (e.g. Claude may not need "CRITICAL RULE" shouting)
+- [ ] Test if gpt-5.4's larger context window enables richer system prompts
+- [ ] Test if frontier models can do multi-hop reasoning in fewer tool calls
+- [ ] Optimize: create model-specific prompt variants if needed, or find a universal prompt
+- [ ] Decide: which model gives best quality/cost/latency tradeoff for demo
+- [ ] Update default model in .env and AVAILABLE_MODELS
+- [ ] Document findings in tasks/model-comparison.md
 
-- [ ] **4. Fix graph_traverse to support all edge types**
-  - Add: `placed_by`, `contains`, `has_review`, `also_bought`, `supports_goal`, `contains_ingredient`
-  - Update docstring with all available edges
-  - Or: remove `graph_traverse` entirely since `cat` and `tree` already do graph navigation
+### P2: Demo Polish
+- [ ] Self-improvement logging (learned_pattern + failure_record tables)
+- [ ] Analytics dashboard on tool usage patterns
+- [ ] Streaming responses (SSE from /chat endpoint)
 
-- [ ] **5. Fix SurrealDB result format handling**
-  - Defensive parsing: handle both `result[0]["result"]` and flat list formats
-  - Add helper function for consistent result extraction
-
-## P1: High Priority
-
-- [ ] **6. Add user context injection**
-  - Accept optional `user_id` in ChatRequest
-  - Look up user profile from SurrealDB at conversation start
-  - Inject user preferences/goals into system prompt
-  - Enable personalized recommendations
-
-- [ ] **7. Add memory distillation**
-  - After each conversation, summarize key preferences/decisions
-  - Store in user's `context` field in SurrealDB
-  - Load on next conversation for continuity
-
-- [ ] **8. Update schema.surql with all edge types**
-  - Add TYPE RELATION definitions for all 9 edges
-
-## P2: Demo Polish
-
-- [ ] **9. Add self-improvement logging**
-  - Log successful tool chains to `learned_pattern`
-  - Log errors to `failure_record`
-  - Use for analytics and prompt tuning
-
-- [ ] **10. Re-run stress tests**
-  - Verify pass rate improvement
-  - Target: 85%+ pass rate
-
-## Verification Criteria
-
-- All 59 existing tests still pass (`make verify`)
-- Stress test pass rate >= 85%
-- No HTTP 500 errors on any stress test query
-- Agent uses tools for every product/data question (no LLM-memory answers)
-- Graph traversal works for at least also_bought, supports_goal, contains_ingredient
-- Multi-hop chains work (search -> verify -> respond)
+### P3: Nice to Have
+- [ ] Upgrade openai/langchain packages to latest for full gpt-5.4 support
+- [ ] Add Gemini 3.1 to AVAILABLE_MODELS once langchain-google-genai supports it
+- [ ] Prompt A/B testing framework (compare prompt variants per model)
+- [ ] Automated regression testing in CI
