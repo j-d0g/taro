@@ -32,8 +32,8 @@ from mock_data import (
 )
 
 # ── CSV paths ──────────────────────────────────────────────────
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "archive", "datasets", "trimmed")
-FAQ_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "archive", "datasets", "bitext_faq.csv")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+FAQ_PATH = os.path.join(os.path.dirname(__file__), "data", "bitext_faq.csv")
 EMBED_BATCH = 100
 
 
