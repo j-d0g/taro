@@ -27,9 +27,15 @@ make seed
 make serve
 # API live at http://localhost:8000
 
-# 6. Test it
+# 6. Open the frontend
+open ../taro-web/index.html
+# Or just open taro-web/index.html in your browser
+
+# 7. Test it
 make test-chat
 ```
+
+> For the full demo walkthrough (product browsing, customer profiles, chat agent), see **[DEMO.md](DEMO.md)**.
 
 ---
 
@@ -98,6 +104,40 @@ Every agent run is traced in LangSmith. To view:
    - Token usage and latency
 
 This is 10% of the hackathon judging criteria. Make sure `LANGSMITH_TRACING=true` is set in your `.env`.
+
+---
+
+## Frontend
+
+The frontend lives in `taro-web/` and is a **standalone vanilla HTML/CSS/JS** application with a lookfantastic-inspired editorial luxury design. No build step required -- just open `taro-web/index.html` in your browser.
+
+**Features:**
+- **Product grid** with vertical tabs (Fitness / Beauty / Wellness) and subcategory chip filters
+- **Split-screen product detail modal** with star ratings, co-purchase recommendations, and reviews
+- **Customer profile panel** showing purchase history, graph-based recommendations, and spend stats
+- **Chat agent drawer** with tool trace cards that visualize SurrealDB multi-model search in real time
+- **Navbar search** for instant product filtering
+
+The frontend works offline with embedded mock data. When the API is running (`make serve`), it connects to the backend for live data, AI chat, and graph-based recommendations.
+
+---
+
+## Testing
+
+```bash
+# Run backend tests (pytest)
+cd taro-api && make verify
+
+# Run E2E browser tests (Playwright)
+cd taro-web && npx playwright test
+
+# Run backend tests directly
+cd taro-api && make test
+```
+
+- **Backend**: 40 pytest tests covering tools, API endpoints, and agent behavior
+- **E2E**: 9 Playwright tests covering product browsing, search, detail modal, customer profile, and chat
+- The `make verify` command is also used by the Claude Code Stop hook to gate changes
 
 ---
 
