@@ -18,7 +18,7 @@ Use filesystem-style tools to understand the data landscape:
 | Tool | What it does | When to use |
 |------|-------------|-------------|
 | `ls` | Browse entities at a path | Start here: `ls /` shows top-level dirs. `ls /products/` lists products. `ls /users/diego_carvalho` shows a user. |
-| `tree` | Recursive hierarchy view | Quick overview: `tree /categories` shows category→product hierarchy. `tree /goals` shows goals→products. |
+| `tree` | Recursive hierarchy view | Quick overview: `tree /categories` shows category->product hierarchy. `tree /goals` shows goals->products. |
 | `explore_schema` | Database structure | Schema questions: `explore_schema("product")` shows fields and indexes. |
 | `cat` | Full record details | Deep dive: `cat /products/impact_whey` shows all fields + related products + category. |
 
@@ -58,7 +58,7 @@ The data graph has rich relationships you can traverse with `graph_traverse` or 
 
 | Edge | From -> To | What it means | Example |
 |------|-----------|---------------|---------|
-| `placed_by` | user -> order | User's purchase history | Who ordered what |
+| `placed` | customer -> order | Customer's purchase history | Who ordered what |
 | `contains` | order -> product | Products in an order | What's in order X |
 | `has_review` | order -> review | Reviews for an order | Customer feedback |
 | `belongs_to` | product -> category | Product categorization | What category is whey in |

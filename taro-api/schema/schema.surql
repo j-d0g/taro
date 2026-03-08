@@ -3,14 +3,15 @@
 
 -- ============================================================
 -- Unified documents table (searchable content: products, FAQs, articles)
+-- Triple-indexed: vector (HNSW) + full-text (BM25) + filter
 -- ============================================================
 DEFINE TABLE documents SCHEMAFULL;
 
-DEFINE FIELD doc_type ON documents TYPE string;          -- "product", "faq", "article"
+DEFINE FIELD doc_type ON documents TYPE string;              -- "product", "faq", "article"
 DEFINE FIELD title ON documents TYPE string;
 DEFINE FIELD content ON documents TYPE string;
-DEFINE FIELD source_id ON documents TYPE option<string>;  -- link to source record (e.g. "product:impact_whey")
-DEFINE FIELD metadata ON documents TYPE option<object>;   -- flexible metadata
+DEFINE FIELD source_id ON documents TYPE option<record>;     -- native record link to product/review
+DEFINE FIELD metadata ON documents TYPE option<object>;      -- flexible metadata
 DEFINE FIELD embedding ON documents TYPE option<array<float>>;
 DEFINE FIELD created_at ON documents TYPE datetime DEFAULT time::now();
 
@@ -29,109 +30,140 @@ DEFINE INDEX idx_documents_title ON documents FIELDS title
 DEFINE INDEX idx_documents_doc_type ON documents FIELDS doc_type;
 
 -- ============================================================
--- Structured product table (for graph relations + structured queries)
--- ============================================================
-DEFINE TABLE product SCHEMAFULL;
-
-DEFINE FIELD name ON product TYPE string;
-DEFINE FIELD brand ON product TYPE string DEFAULT "Myprotein";
-DEFINE FIELD description ON product TYPE string;
-DEFINE FIELD price ON product TYPE option<float>;
-DEFINE FIELD currency ON product TYPE string DEFAULT "GBP";
-DEFINE FIELD category ON product TYPE option<string>;
-DEFINE FIELD flavours ON product TYPE option<array<string>>;
-DEFINE FIELD key_benefits ON product TYPE option<array<string>>;
-DEFINE FIELD url ON product TYPE option<string>;
-DEFINE FIELD created_at ON product TYPE datetime DEFAULT time::now();
-
--- ============================================================
--- Category hierarchy
--- ============================================================
-DEFINE TABLE category SCHEMAFULL;
-
-DEFINE FIELD name ON category TYPE string;
-DEFINE FIELD description ON category TYPE option<string>;
-DEFINE FIELD parent ON category TYPE option<string>;
-
--- ============================================================
--- User profiles
+-- User (customer / shopper profile)
 -- ============================================================
 DEFINE TABLE user SCHEMAFULL;
 
 DEFINE FIELD name ON user TYPE string;
 DEFINE FIELD email ON user TYPE option<string>;
-DEFINE FIELD profile_type ON user TYPE option<string>;          -- "beauty", "fitness", "wellness", "hybrid"
-DEFINE FIELD experience_level ON user TYPE option<string>;      -- "beginner", "intermediate", "advanced"
-DEFINE FIELD goals ON user TYPE option<array<string>>;
-DEFINE FIELD skin_type ON user TYPE option<string>;
-DEFINE FIELD dietary_restrictions ON user TYPE option<array<string>>;
-DEFINE FIELD preferences ON user TYPE option<object>;           -- flexible prefs object
-DEFINE FIELD context ON user TYPE option<string>;               -- distilled memory from conversations
-DEFINE FIELD created_at ON user TYPE datetime DEFAULT time::now();
+DEFINE FIELD city ON user TYPE option<string>;
+DEFINE FIELD age ON user TYPE option<int>;
+DEFINE FIELD profile_type ON user TYPE option<string>;       -- "skincare enthusiast", "fitness beginner", etc.
+DEFINE FIELD experience_level ON user TYPE option<string>;   -- "beginner", "intermediate", "advanced"
+DEFINE FIELD goals ON user TYPE option<array<string>>;       -- ["clear skin", "muscle gain"]
+DEFINE FIELD dietary_restrictions ON user TYPE option<array<string>>; -- ["vegan", "gluten-free"]
+DEFINE FIELD preferred_brands ON user TYPE option<array<string>>;
+DEFINE FIELD skin_type ON user TYPE option<string>;          -- "dry", "oily", "combination", "sensitive"
+DEFINE FIELD context ON user TYPE option<string>;            -- LLM-readable summary
+DEFINE FIELD memory ON user TYPE option<array<string>>;      -- key facts for personalisation
 
 -- ============================================================
--- Orders
+-- Customer (from CSV dataset)
+-- ============================================================
+DEFINE TABLE customer SCHEMAFULL;
+
+DEFINE FIELD name ON customer TYPE option<string>;
+DEFINE FIELD city ON customer TYPE option<string>;
+DEFINE FIELD state ON customer TYPE option<string>;
+
+-- ============================================================
+-- Product (structured data for graph + direct queries)
+-- ============================================================
+DEFINE TABLE product SCHEMAFULL;
+
+DEFINE FIELD name ON product TYPE string;
+DEFINE FIELD vertical ON product TYPE option<string>;
+DEFINE FIELD subcategory ON product TYPE option<string>;
+DEFINE FIELD category ON product TYPE option<string>;        -- alias for subcategory (used in fs_tools)
+DEFINE FIELD price ON product TYPE option<float>;
+DEFINE FIELD avg_rating ON product TYPE option<float>;
+DEFINE FIELD description ON product TYPE option<string>;
+DEFINE FIELD brand ON product TYPE option<string>;
+DEFINE FIELD ingredients ON product TYPE option<array<string>>;
+DEFINE FIELD tags ON product TYPE option<array<string>>;     -- "vegan", "bestseller", "new", etc.
+DEFINE FIELD dietary_tags ON product TYPE option<array<string>>; -- "vegan", "gluten-free", "organic"
+DEFINE FIELD weight_g ON product TYPE option<float>;
+DEFINE FIELD image_url ON product TYPE option<string>;
+DEFINE FIELD product_url ON product TYPE option<string>;
+DEFINE FIELD created_at ON product TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Order
 -- ============================================================
 DEFINE TABLE order SCHEMAFULL;
 
-DEFINE FIELD order_date ON order TYPE option<datetime>;
 DEFINE FIELD total ON order TYPE option<float>;
-DEFINE FIELD currency ON order TYPE string DEFAULT "GBP";
-DEFINE FIELD status ON order TYPE string DEFAULT "completed";
+DEFINE FIELD price ON order TYPE option<float>;
+DEFINE FIELD currency ON order TYPE option<string> DEFAULT 'GBP';
+DEFINE FIELD status ON order TYPE option<string>;            -- "delivered", "shipped", "processing"
+DEFINE FIELD order_date ON order TYPE option<datetime>;
 DEFINE FIELD created_at ON order TYPE datetime DEFAULT time::now();
 
 -- ============================================================
--- Reviews
+-- Review (with vector index for semantic search over comments)
 -- ============================================================
 DEFINE TABLE review SCHEMAFULL;
 
-DEFINE FIELD rating ON review TYPE option<int>;
+DEFINE FIELD score ON review TYPE int;
 DEFINE FIELD comment ON review TYPE option<string>;
 DEFINE FIELD sentiment ON review TYPE option<string>;
-DEFINE FIELD created_at ON review TYPE datetime DEFAULT time::now();
+DEFINE FIELD embedding ON review TYPE option<array<float>>;
+
+DEFINE INDEX idx_review_embedding ON review FIELDS embedding
+    HNSW DIMENSION 1536 DIST COSINE;
 
 -- ============================================================
--- Goals
+-- Category (3 verticals: Skincare, Haircare, Body & Fragrance; 9 subcategories)
+-- ============================================================
+DEFINE TABLE category SCHEMAFULL;
+
+DEFINE FIELD name ON category TYPE string;
+DEFINE FIELD level ON category TYPE string;                  -- "vertical" or "subcategory"
+DEFINE FIELD description ON category TYPE option<string>;
+
+-- ============================================================
+-- Goal (fitness / wellness / beauty goals)
 -- ============================================================
 DEFINE TABLE goal SCHEMAFULL;
 
 DEFINE FIELD name ON goal TYPE string;
 DEFINE FIELD description ON goal TYPE option<string>;
-DEFINE FIELD created_at ON goal TYPE datetime DEFAULT time::now();
+DEFINE FIELD vertical ON goal TYPE option<string>;           -- which vertical this goal relates to
 
 -- ============================================================
--- Ingredients
+-- Ingredient (key active ingredients across products)
 -- ============================================================
 DEFINE TABLE ingredient SCHEMAFULL;
 
 DEFINE FIELD name ON ingredient TYPE string;
-DEFINE FIELD category ON ingredient TYPE option<string>;
+DEFINE FIELD role ON ingredient TYPE option<string>;         -- "hydration", "anti-aging", "exfoliation"
+DEFINE FIELD category ON ingredient TYPE option<string>;     -- "skincare", "nutrition", "wellness"
 DEFINE FIELD description ON ingredient TYPE option<string>;
-DEFINE FIELD created_at ON ingredient TYPE datetime DEFAULT time::now();
+DEFINE FIELD common_in ON ingredient TYPE option<array<string>>; -- product types it appears in
 
 -- ============================================================
--- Product extra fields for broader dataset
+-- Graph edges (9 total)
 -- ============================================================
-DEFINE FIELD dietary_tags ON product TYPE option<array<string>>;
-DEFINE FIELD rating ON product TYPE option<float>;
-DEFINE FIELD review_count ON product TYPE option<int>;
-DEFINE FIELD vertical ON product TYPE option<string>;
-DEFINE FIELD subcategory ON product TYPE option<string>;
 
--- ============================================================
--- Graph edges (RELATE) - all 9 edge types
--- ============================================================
-DEFINE TABLE placed_by SCHEMAFULL TYPE RELATION IN user OUT order;
+-- customer -placed-> order
+DEFINE TABLE placed SCHEMAFULL TYPE RELATION IN customer OUT order;
+
+-- order -contains-> product
 DEFINE TABLE contains SCHEMAFULL TYPE RELATION IN order OUT product;
+
+-- order -has_review-> review
 DEFINE TABLE has_review SCHEMAFULL TYPE RELATION IN order OUT review;
-DEFINE TABLE belongs_to SCHEMAFULL TYPE RELATION IN product OUT category;
-DEFINE TABLE child_of SCHEMAFULL TYPE RELATION IN category OUT category;
+
+-- product -also_bought-> product (derived: co-purchased by same user)
 DEFINE TABLE also_bought SCHEMAFULL TYPE RELATION IN product OUT product;
-DEFINE FIELD weight ON also_bought TYPE option<float>;
+DEFINE FIELD weight ON also_bought TYPE int DEFAULT 1;
+
+-- product -belongs_to-> category
+DEFINE TABLE belongs_to SCHEMAFULL TYPE RELATION IN product OUT category;
+
+-- category -child_of-> category (subcategory -> vertical)
+DEFINE TABLE child_of SCHEMAFULL TYPE RELATION IN category OUT category;
+
+-- product -supports_goal-> goal
 DEFINE TABLE supports_goal SCHEMAFULL TYPE RELATION IN product OUT goal;
+
+-- product -contains_ingredient-> ingredient
 DEFINE TABLE contains_ingredient SCHEMAFULL TYPE RELATION IN product OUT ingredient;
+DEFINE FIELD concentration ON contains_ingredient TYPE option<string>; -- "active", "trace"
+
+-- product -related_to-> product (cross-reference: similar/complementary)
 DEFINE TABLE related_to SCHEMAFULL TYPE RELATION IN product OUT product;
-DEFINE FIELD reason ON related_to TYPE option<string>;
+DEFINE FIELD reason ON related_to TYPE option<string>;       -- "same category", "complementary", "alternative"
 
 -- ============================================================
 -- Web cache (for Tavily results)
@@ -146,7 +178,7 @@ DEFINE FIELD ttl_hours ON web_cache TYPE int DEFAULT 24;
 DEFINE INDEX idx_web_cache_query ON web_cache FIELDS query UNIQUE;
 
 -- ============================================================
--- Self-improvement tables (Phase 6 stretch)
+-- Self-improvement tables
 -- ============================================================
 DEFINE TABLE learned_pattern SCHEMAFULL;
 

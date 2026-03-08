@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taro.ai — SurrealDB E-commerce Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ═══ Navbar ═══════════════════════════════════════════ -->
+<nav class="navbar">
+  <div class="navbar-left">
+    <div class="navbar-brand">
+      <div class="logo">T</div>
+      <span>Taro.ai</span>
+    </div>
+    <span class="navbar-badge">Powered by SurrealDB</span>
+  </div>
+  <div class="navbar-right">
+    <div class="search-bar">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" placeholder="Search products..." id="searchInput" />
+    </div>
+    <button class="profile-btn" id="profileBtn" onclick="toggleProfile()">
+      <span class="profile-avatar">D</span>
+      <span class="profile-name">Diego</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ Filter Tabs ═════════════════════════════════════ -->
+<div class="filter-bar" id="filterBar">
+  <button class="filter-tab active" data-vertical="All">All</button>
+  <button class="filter-tab" data-vertical="Fitness">Fitness</button>
+  <button class="filter-tab" data-vertical="Beauty">Beauty</button>
+  <button class="filter-tab" data-vertical="Wellness">Wellness</button>
+  <span class="filter-count" id="productCount"></span>
+</div>
+
+<!-- ═══ Subcategory Chips ════════════════════════════════ -->
+<div class="subcategory-bar" id="subcategoryBar"></div>
+
+<!-- ═══ Product Grid ════════════════════════════════════ -->
+<main class="main-content">
+  <p class="section-title" id="sectionTitle">All products</p>
+  <div class="product-grid" id="productGrid"></div>
+</main>
+
+<!-- ═══ Product Detail Modal ════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-image" id="modalImage"></div>
+      <div class="modal-info">
+        <span class="modal-vertical" id="modalVertical"></span>
+        <h2 class="modal-name" id="modalName"></h2>
+        <p class="modal-description" id="modalDescription"></p>
+        <div class="modal-price" id="modalPrice"></div>
+        <div class="modal-rating" id="modalRating"></div>
+        <div class="modal-section">
+          <h3>Customers also bought</h3>
+          <div class="also-bought" id="alsoBought"></div>
+        </div>
+        <div class="modal-section">
+          <h3>Recent reviews</h3>
+          <div class="modal-reviews" id="modalReviews"></div>
+        </div>
+        <button class="modal-chat-btn" onclick="askAboutProduct()">
+          &#128172; Ask the agent about this product
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Customer Profile Panel ═══════════════════════════ -->
+<div class="profile-overlay" id="profileOverlay" onclick="toggleProfile()">
+  <div class="profile-panel" onclick="event.stopPropagation()">
+    <div class="profile-header">
+      <div class="profile-header-avatar">D</div>
+      <div>
+        <div class="profile-header-name" id="profileName"></div>
+        <div class="profile-header-location" id="profileLocation"></div>
+      </div>
+      <button class="modal-close" onclick="toggleProfile()">&#10005;</button>
+    </div>
+    <div class="profile-stats" id="profileStats"></div>
+    <h3 class="profile-section-title">Purchase History</h3>
+    <p class="profile-section-subtitle">via <code>customer->placed->order->contains->product</code></p>
+    <div class="profile-purchases" id="profilePurchases"></div>
+    <h3 class="profile-section-title">Recommended For You</h3>
+    <p class="profile-section-subtitle">via <code>product->also_bought->product</code> graph traversal</p>
+    <div class="profile-recommendations" id="profileRecommendations"></div>
+  </div>
+</div>
+
+<!-- ═══ Chat Bubble ═════════════════════════════════════ -->
+<div class="chat-bubble" id="chatBubble" onclick="toggleChat()">&#128172;</div>
+
+<!-- ═══ Chat Panel ══════════════════════════════════════ -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <div class="chat-header-avatar">T</div>
+      <div>
+        <div class="chat-header-title">Taro Agent</div>
+        <div class="chat-header-status">
+          Online — multi-model SurrealDB
+        </div>
+      </div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">&#10005;</button>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="msg agent">
+      <div class="msg-bubble">
+        Hi! I'm your shopping assistant powered by SurrealDB's multi-model
+        engine. I can search products semantically, traverse purchase graphs,
+        and learn from our conversations. What are you looking for?
+      </div>
+    </div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Best sellers under &pound;30</button>
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Skincare routine for dry skin</button>
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Compare retinol serums</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-item">
+      Learned: <span class="stat-value" id="learnedCount">0</span>
+    </div>
+    <div class="stat-item">
+      Queries: <span class="stat-value" id="queryCount">0</span>
+    </div>
+    <div class="stat-item">
+      Model: <span class="stat-value" id="modelName">gpt-4o</span>
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <input
+      class="chat-input"
+      id="chatInput"
+      placeholder="Ask about products..."
+      onkeydown="if(event.key==='Enter')sendMessage()"
+    />
+    <button class="chat-send" onclick="sendMessage()">&#10148;</button>
+  </div>
+</div>
+
+<!-- ═══ Scripts (order matters) ═════════════════════════ -->
+<script src="js/mock-data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/graph-viz.js"></script>
+<script src="js/products.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

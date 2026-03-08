@@ -170,7 +170,7 @@ async def _handle_show_user(db, user_id, verbose=False):
 
         # Fetch orders
         orders_result = await db.query(
-            f"SELECT ->placed_by->order.* AS orders FROM user:{user_id}"
+            f"SELECT ->placed->order.* AS orders FROM customer:{user_id}"
         )
         orders = orders_result[0].get("orders", []) if orders_result else []
         if orders:
@@ -201,7 +201,7 @@ async def _handle_show_user(db, user_id, verbose=False):
 
 async def _handle_list_user_orders(db, user_id, verbose=False):
     result = await db.query(
-        f"SELECT ->placed_by->order.* AS orders FROM user:{user_id}"
+        f"SELECT ->placed->order.* AS orders FROM customer:{user_id}"
     )
     orders = result[0].get("orders", []) if result else []
     if not orders:
@@ -803,7 +803,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
     if m:
         uid = m.group(1)
         result = await db.query(
-            f"SELECT count() AS c FROM order WHERE <-placed_by<-user CONTAINS user:{uid} GROUP ALL"
+            f"SELECT count() AS c FROM order WHERE <-placed<-customer CONTAINS customer:{uid} GROUP ALL"
         )
         count = result[0].get("c", 0) if result else 0
         return [(f"orders/ ({count})", f"/users/{uid}/orders", True)]
@@ -812,7 +812,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
     if m:
         uid = m.group(1)
         result = await db.query(
-            f"SELECT ->placed_by->order.{{id, order_date, total, status}} AS orders FROM user:{uid}"
+            f"SELECT ->placed->order.{{id, order_date, total, status}} AS orders FROM customer:{uid}"
         )
         orders = result[0].get("orders", []) if result else []
         children = []

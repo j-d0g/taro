@@ -49,7 +49,7 @@ For EVERY user query, you MUST:
 
 ## GRAPH EDGES (9 types)
 
-`placed_by`, `contains`, `has_review`, `belongs_to`, `child_of`, `also_bought`, `supports_goal`, `contains_ingredient`, `related_to`
+`placed`, `contains`, `has_review`, `belongs_to`, `child_of`, `also_bought`, `supports_goal`, `contains_ingredient`, `related_to`
 
 ## RESPONSE FORMAT
 

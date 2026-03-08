@@ -7,7 +7,7 @@ from db import get_db
 
 # All available edge types in the data graph
 EDGE_TYPES = {
-    "placed_by": {"from": "user", "to": "order", "desc": "user's purchase history"},
+    "placed": {"from": "customer", "to": "order", "desc": "customer's purchase history"},
     "contains": {"from": "order", "to": "product", "desc": "products in an order"},
     "has_review": {"from": "order", "to": "review", "desc": "reviews for an order"},
     "belongs_to": {"from": "product", "to": "category", "desc": "product categorization"},
@@ -32,7 +32,7 @@ async def graph_traverse(
     results (e.g. 'product:impact_whey') as start_id.
 
     Available edge types:
-      - placed_by: user -> order (purchase history)
+      - placed: customer -> order (purchase history)
       - contains: order -> product (order contents)
       - has_review: order -> review (customer feedback)
       - belongs_to: product -> category (what category)
@@ -43,7 +43,7 @@ async def graph_traverse(
       - related_to: product -> product (similar/complementary)
 
     Args:
-        start_id: Starting record ID (e.g. 'product:impact_whey', 'user:diego_carvalho').
+        start_id: Starting record ID (e.g. 'customer:abc123', 'product:impact_whey', 'category:protein').
         edge_type: Relationship type (see list above).
         direction: 'out' (->edge->) or 'in' (<-edge<-).
         depth: Hops to traverse (1-3, default 1).
