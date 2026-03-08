@@ -1020,6 +1020,27 @@ body {
 .tool-label.graph { background: rgba(130, 100, 180, 0.1); color: #7B5EA7; }
 .tool-label.bm25 { background: rgba(74, 157, 91, 0.1); color: var(--success); }
 .tool-label.relational { background: rgba(212, 168, 67, 0.1); color: var(--warning); }
+.tool-label.web { background: rgba(59, 130, 246, 0.1); color: #3B82F6; }
+
+.tool-icon.web { color: #3B82F6; }
+
+/* ── Tool trace (collapsed by default) ────────────── */
+.tool-trace-summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+.tool-trace-summary:hover { background: var(--bg-hover); }
+
+.tool-trace-details {
+  display: none;
+  padding: 4px 0;
+}
+.tool-trace.expanded .tool-trace-details { display: block; }
+.tool-trace.expanded .tool-trace-summary { margin-bottom: 4px; }
 
 /* ── Self-improvement indicator ───────────────────── */
 .self-improve {

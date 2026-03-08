@@ -146,9 +146,13 @@ async function sendChatMessage(message, threadId) {
     // Normalise tool_calls to display format
     const toolCalls = (data.tool_calls || []).map(tc => {
       let type = 'relational';
-      if (tc.name.includes('semantic') || tc.name.includes('vector')) type = 'vector';
-      else if (tc.name.includes('graph') || tc.name.includes('traverse')) type = 'graph';
-      else if (tc.name.includes('keyword') || tc.name.includes('hybrid')) type = 'bm25';
+      const name = tc.name || '';
+      if (name === 'find') type = 'vector';
+      else if (name === 'graph_traverse') type = 'graph';
+      else if (name === 'grep') type = 'bm25';
+      else if (name === 'web_search') type = 'web';
+      else if (name === 'surrealql_query') type = 'relational';
+      else if (['ls', 'cat', 'tree', 'explore_schema'].includes(name)) type = 'relational';
       return { name: tc.name, type, args: JSON.stringify(tc.args, null, 2) };
     });
 
