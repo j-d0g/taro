@@ -1,35 +1,50 @@
 /**
  * products.js — Product grid rendering, filtering, search, and detail modal.
+ * Uses async API calls with graceful mock fallback.
  */
 
 let currentFilter = 'All';
 let currentSubcategory = null;
+let cachedProducts = null;
 
 // ── Render product grid ────────────────────────────────
 
-function renderProducts(filter = 'All', search = '', subcategory = null) {
+async function renderProducts(filter = 'All', search = '', subcategory = null) {
   const grid = document.getElementById('productGrid');
-  let products = [...MOCK_PRODUCTS]; // Will be replaced by fetchProducts() when API is live
 
-  if (filter !== 'All') products = products.filter(p => p.vertical === filter);
-  if (subcategory) products = products.filter(p => p.subcategory === subcategory);
-  if (search) {
-    const q = search.toLowerCase();
-    products = products.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.subcategory.toLowerCase().includes(q) ||
-      (p.description && p.description.toLowerCase().includes(q))
-    );
+  // Show loading skeleton on first load
+  if (!cachedProducts) {
+    grid.innerHTML = Array(8).fill(`
+      <div class="product-card">
+        <div class="product-image"><div class="skeleton" style="width:100%;height:100%"></div></div>
+        <div class="product-info">
+          <div class="skeleton" style="width:60%;height:10px;margin-bottom:8px"></div>
+          <div class="skeleton" style="width:90%;height:14px;margin-bottom:12px"></div>
+          <div class="skeleton" style="width:40%;height:16px"></div>
+        </div>
+      </div>
+    `).join('');
   }
 
-  document.getElementById('productCount').textContent = `${products.length} products`;
+  const products = await fetchProducts(filter !== 'All' ? filter : null, search || null);
+  cachedProducts = products;
+
+  let filtered = [...products];
+  if (subcategory) filtered = filtered.filter(p => p.subcategory === subcategory);
+
+  document.getElementById('productCount').textContent = `${filtered.length} products`;
 
   let title = 'All products';
   if (filter !== 'All') title = `${filter} products`;
   if (subcategory) title = `${filter} / ${subcategory}`;
   document.getElementById('sectionTitle').textContent = title;
 
-  grid.innerHTML = products.map(p => `
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:40px">No products found</p>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => `
     <div class="product-card" data-id="${p.id}" onclick="openProductDetail('${p.id}')">
       <span class="vertical-badge ${p.vertical}">${p.vertical}</span>
       <div class="product-image">
@@ -40,12 +55,12 @@ function renderProducts(filter = 'All', search = '', subcategory = null) {
         }
       </div>
       <div class="product-info">
-        <div class="product-subcategory">${p.subcategory}</div>
+        <div class="product-subcategory">${p.subcategory || ''}</div>
         <div class="product-name">${p.name}</div>
         <div class="product-meta">
-          <span class="product-price">\u00a3${p.price.toFixed(2)}</span>
+          <span class="product-price">\u00a3${(p.price || 0).toFixed(2)}</span>
           <span class="product-rating">
-            <span class="star">&#9733;</span> ${p.avg_rating.toFixed(1)}
+            <span class="star">&#9733;</span> ${(p.avg_rating || 0).toFixed(1)}
           </span>
         </div>
       </div>
@@ -64,7 +79,7 @@ function renderSubcategories(vertical) {
     return;
   }
 
-  const subs = MOCK_SUBCATEGORIES[vertical] || [];
+  const subs = typeof MOCK_SUBCATEGORIES !== 'undefined' ? (MOCK_SUBCATEGORIES[vertical] || []) : [];
   bar.innerHTML = `
     <button class="subcategory-chip ${!currentSubcategory ? 'active' : ''}"
             onclick="selectSubcategory(null)">All ${vertical}</button>
@@ -84,76 +99,79 @@ function selectSubcategory(sub) {
 
 // ── Product detail modal ───────────────────────────────
 
-function openProductDetail(id) {
-  const product = MOCK_PRODUCTS.find(p => p.id === id);
-  if (!product) return;
+async function openProductDetail(id) {
+  // Show modal immediately with loading state
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('modalName').textContent = 'Loading...';
+  document.getElementById('modalDescription').textContent = '';
+  document.getElementById('modalPrice').textContent = '';
+  document.getElementById('modalRating').innerHTML = '';
+  document.getElementById('alsoBought').innerHTML = '';
+  document.getElementById('modalReviews').innerHTML = '';
+
+  const data = await fetchProductDetail(id);
+  if (!data) {
+    closeModal();
+    return;
+  }
 
   // Fill modal fields
   const imgEl = document.getElementById('modalImage');
-  if (product.image_url) {
-    imgEl.innerHTML = `<img src="${product.image_url}" alt="${product.name}"
-      style="width:100%;height:100%;object-fit:cover;border-radius:12px"
+  if (data.image_url) {
+    imgEl.innerHTML = `<img src="${data.image_url}" alt="${data.name}"
       onerror="this.parentElement.innerHTML='<div class=placeholder style=font-size:80px>&#128722;</div>'" />`;
   } else {
     imgEl.innerHTML = '<div class="placeholder" style="font-size:80px">&#128722;</div>';
   }
 
-  document.getElementById('modalVertical').textContent = product.vertical;
-  document.getElementById('modalVertical').className = `modal-vertical ${product.vertical}`;
-  document.getElementById('modalName').textContent = product.name;
+  document.getElementById('modalVertical').textContent = data.vertical || '';
+  document.getElementById('modalVertical').className = `modal-vertical ${data.vertical || ''}`;
+  document.getElementById('modalName').textContent = data.name;
   document.getElementById('modalDescription').textContent =
-    product.description || `${product.subcategory} product in the ${product.vertical} range.`;
-  document.getElementById('modalPrice').textContent = `\u00a3${product.price.toFixed(2)}`;
+    data.description || `${data.subcategory || ''} product in the ${data.vertical || ''} range.`;
+  document.getElementById('modalPrice').textContent = `\u00a3${(data.price || 0).toFixed(2)}`;
 
   // Stars
-  const stars = '\u2605'.repeat(Math.round(product.avg_rating)) +
-                '\u2606'.repeat(5 - Math.round(product.avg_rating));
+  const rating = data.avg_rating || 0;
+  const stars = '\u2605'.repeat(Math.round(rating)) + '\u2606'.repeat(5 - Math.round(rating));
   document.getElementById('modalRating').innerHTML =
-    `<span style="color:var(--warning)">${stars}</span> ${product.avg_rating.toFixed(1)}`;
+    `<span style="color:var(--warning)">${stars}</span> ${rating.toFixed(1)}`;
 
-  // Also bought (graph data)
-  const alsoBoughtIds = MOCK_ALSO_BOUGHT[id] || [];
+  // Also bought (from API or mock)
+  const alsoBought = data.also_bought || [];
   const alsoBoughtEl = document.getElementById('alsoBought');
-  if (alsoBoughtIds.length > 0) {
-    alsoBoughtEl.innerHTML = alsoBoughtIds.map(abId => {
-      const ab = MOCK_PRODUCTS.find(p => p.id === abId);
-      if (!ab) return '';
-      return `
-        <div class="also-bought-card" onclick="openProductDetail('${ab.id}')">
-          <div class="also-bought-img">
-            ${ab.image_url
-              ? `<img src="${ab.image_url}" alt="${ab.name}" style="width:100%;height:100%;object-fit:cover;border-radius:6px"
-                   onerror="this.parentElement.innerHTML='&#128722;'" />`
-              : '&#128722;'}
-          </div>
-          <div class="also-bought-name">${ab.name}</div>
-          <div class="also-bought-price">\u00a3${ab.price.toFixed(2)}</div>
+  if (alsoBought.length > 0) {
+    alsoBoughtEl.innerHTML = alsoBought.map(ab => `
+      <div class="also-bought-card" onclick="openProductDetail('${ab.id}')">
+        <div class="also-bought-img">
+          ${ab.image_url
+            ? `<img src="${ab.image_url}" alt="${ab.name}" style="width:100%;height:100%;object-fit:cover;border-radius:6px"
+                 onerror="this.parentElement.innerHTML='&#128722;'" />`
+            : '&#128722;'}
         </div>
-      `;
-    }).join('');
+        <div class="also-bought-name">${ab.name}</div>
+        <div class="also-bought-price">\u00a3${(ab.price || 0).toFixed(2)}</div>
+      </div>
+    `).join('');
   } else {
     alsoBoughtEl.innerHTML = '<span style="color:var(--text-dim);font-size:12px">No co-purchase data yet</span>';
   }
 
-  // Reviews — find via order->has_review->review (reviews keyed by order_id)
-  // Look up which orders contain this product, then get their reviews
-  const relevantOrders = MOCK_CUSTOMER.orders
-    .filter(o => o.products.includes(id))
-    .map(o => o.order_id);
-  const reviews = relevantOrders.flatMap(oid => MOCK_REVIEWS[oid] || []);
+  // Reviews
+  const reviews = data.reviews || [];
   const reviewsEl = document.getElementById('modalReviews');
   if (reviews.length > 0) {
     reviewsEl.innerHTML = reviews.map(r => {
-      const sentimentColor = r.sentiment === 'positive' ? 'var(--success)'
-        : r.sentiment === 'negative' ? 'var(--error)' : 'var(--warning)';
-      const stars = '\u2605'.repeat(r.score) + '\u2606'.repeat(5 - r.score);
+      const sentimentClass = r.sentiment || 'neutral';
+      const reviewStars = '\u2605'.repeat(r.score || 0) + '\u2606'.repeat(5 - (r.score || 0));
       return `
         <div class="review-card">
           <div class="review-header">
-            <span style="color:var(--warning)">${stars}</span>
-            <span class="review-sentiment" style="color:${sentimentColor}">${r.sentiment}</span>
+            <span class="review-stars">${reviewStars}</span>
+            <span class="review-sentiment ${sentimentClass}">${sentimentClass}</span>
           </div>
-          <p class="review-comment">${r.comment}</p>
+          <p class="review-comment">${r.comment || ''}</p>
         </div>
       `;
     }).join('');
@@ -163,10 +181,7 @@ function openProductDetail(id) {
 
   // Store current product id for chat button
   document.getElementById('modalOverlay').dataset.productId = id;
-
-  // Show modal
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  document.getElementById('modalOverlay').dataset.productName = data.name;
 }
 
 function closeModal() {
@@ -175,17 +190,18 @@ function closeModal() {
 }
 
 function askAboutProduct() {
-  const id = document.getElementById('modalOverlay').dataset.productId;
-  const product = MOCK_PRODUCTS.find(p => p.id === id);
-  if (!product) return;
+  const name = document.getElementById('modalOverlay').dataset.productName;
+  if (!name) return;
 
   closeModal();
   if (!chatOpen) toggleChat();
-  document.getElementById('chatInput').value = `Tell me about ${product.name}`;
+  document.getElementById('chatInput').value = `Tell me about ${name}`;
   sendMessage();
 }
 
 // ── Filter tab + search event binding ──────────────────
+
+let searchDebounceTimer = null;
 
 function initFilters() {
   document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -200,6 +216,9 @@ function initFilters() {
   });
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
-    renderProducts(currentFilter, e.target.value, currentSubcategory);
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      renderProducts(currentFilter, e.target.value, currentSubcategory);
+    }, 300);
   });
 }

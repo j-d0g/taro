@@ -152,6 +152,15 @@ function formatMarkdown(text) {
     .replace(/\n/g, '<br>');
 }
 
+// ── Suggestion chips ─────────────────────────────────
+
+function useSuggestion(el) {
+  document.getElementById('chatInput').value = el.textContent;
+  const suggestions = document.getElementById('chatSuggestions');
+  if (suggestions) suggestions.style.display = 'none';
+  sendMessage();
+}
+
 // ── Keyboard shortcut (Escape to close) ────────────────
 
 function initChatKeyboard() {

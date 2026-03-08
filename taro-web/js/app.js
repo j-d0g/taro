@@ -2,15 +2,15 @@
  * app.js — Main entry point. Wires everything together on DOMContentLoaded.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Render initial product grid
-  renderProducts();
-
-  // Bind filter tabs and search bar
+document.addEventListener('DOMContentLoaded', async () => {
+  // Bind filter tabs and search bar (sync — needs to be ready before products load)
   initFilters();
 
   // Bind chat keyboard shortcuts
   initChatKeyboard();
+
+  // Render initial product grid (async — fetches from API)
+  await renderProducts();
 
   // Close modal on Escape
   document.addEventListener('keydown', (e) => {
@@ -20,11 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Log startup info
+  // Check API health and log status
+  const apiUp = await checkApiHealth();
   console.log(
     '%c Taro.ai %c Powered by SurrealDB ',
-    'background: linear-gradient(135deg, #9600ff, #ff00a0); color: white; padding: 4px 8px; border-radius: 4px 0 0 4px; font-weight: bold;',
-    'background: #15131D; color: #9B97B0; padding: 4px 8px; border-radius: 0 4px 4px 0;'
+    'background: #1C1C1E; color: #C9A96E; padding: 4px 8px; border-radius: 4px 0 0 4px; font-weight: bold;',
+    'background: #F5F0EA; color: #6B6B6F; padding: 4px 8px; border-radius: 0 4px 4px 0;'
   );
-  console.log(`Mock mode: ${USE_MOCK ? 'ON' : 'OFF'} | API: ${API_BASE}`);
+  console.log(`API: ${API_BASE} | Status: ${apiUp ? 'Connected' : 'Offline (using mock data)'}`);
 });
