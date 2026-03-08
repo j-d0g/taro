@@ -93,17 +93,17 @@ Maps to `category` records where `level = 'subcategory'` linked via `child_of` e
 
 Returns customer profile with purchase history.
 
-Purchase history is derived by traversing `customer->placed->order->contains->product` and aggregating.
+Purchase history is derived by traversing `customer->placed->order->contains->product`. Each order includes its products.
 
 **Response:**
 ```json
 {
-  "id": "154e666b",
-  "name": "Charlotte Souza",
-  "city": "contagem",
-  "state": "MG",
-  "purchases": [
-    { "product_id": "ce5b9184", "total_spent": 32.02, "order_count": 1 }
+  "id": "dfa8a1b5",
+  "name": "Diego Carvalho",
+  "city": "forquilhinha",
+  "state": "SC",
+  "orders": [
+    { "order_id": "73fa93bf", "price": 104.65, "products": ["8d777214", "b8960327", "d92239d3", "728cfef9"] }
   ]
 }
 ```
