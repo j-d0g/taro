@@ -1559,3 +1559,48 @@ body {
   .product-name { font-size: 12px; }
   .product-price { font-size: 16px; }
 }
+
+/* ── Pagination ───────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 0 40px;
+}
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.page-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.page-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.page-dots {
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 0 2px;
+}
+.page-info {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-left: 12px;
+}

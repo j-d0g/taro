@@ -6,6 +6,8 @@
 let currentFilter = 'All';
 let currentSubcategory = null;
 let cachedProducts = null;
+let currentPage = 1;
+const PAGE_SIZE = 28;
 
 // ── Vertical name → CSS class helper ──────────────────
 
@@ -38,6 +40,11 @@ async function renderProducts(filter = 'All', search = '', subcategory = null) {
   let filtered = [...products];
   if (subcategory) filtered = filtered.filter(p => p.subcategory === subcategory);
 
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = 1;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
   document.getElementById('productCount').textContent = `${filtered.length} products`;
 
   let title = 'All products';
@@ -47,10 +54,11 @@ async function renderProducts(filter = 'All', search = '', subcategory = null) {
 
   if (filtered.length === 0) {
     grid.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:40px">No products found</p>';
+    removePagination();
     return;
   }
 
-  grid.innerHTML = filtered.map(p => `
+  grid.innerHTML = pageItems.map(p => `
     <div class="product-card" data-id="${p.id}" onclick="openProductDetail('${p.id}')">
       <span class="vertical-badge ${verticalClass(p.vertical)}">${p.vertical}</span>
       <div class="product-image">
@@ -72,6 +80,8 @@ async function renderProducts(filter = 'All', search = '', subcategory = null) {
       </div>
     </div>
   `).join('');
+
+  renderPagination(totalPages, filtered.length);
 }
 
 // ── Dynamic filter tabs from API ─────────────────────
@@ -132,6 +142,7 @@ async function renderSubcategories(vertical) {
 
 function selectSubcategory(sub) {
   currentSubcategory = sub;
+  currentPage = 1;
   renderSubcategories(currentFilter);
   renderProducts(currentFilter, document.getElementById('searchInput').value, currentSubcategory);
 }
@@ -250,6 +261,7 @@ function initFilters() {
       tab.classList.add('active');
       currentFilter = tab.dataset.vertical;
       currentSubcategory = null;
+      currentPage = 1;
       renderSubcategories(currentFilter);
       renderProducts(currentFilter, document.getElementById('searchInput').value, currentSubcategory);
     });
@@ -258,7 +270,86 @@ function initFilters() {
   document.getElementById('searchInput').addEventListener('input', (e) => {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
+      currentPage = 1;
       renderProducts(currentFilter, e.target.value, currentSubcategory);
     }, 300);
   });
+}
+
+// ── Pagination ─────────────────────────────────────────
+
+function renderPagination(totalPages, totalItems) {
+  removePagination();
+  if (totalPages <= 1) return;
+
+  const container = document.createElement('div');
+  container.id = 'pagination';
+  container.className = 'pagination';
+
+  // Previous
+  const prev = document.createElement('button');
+  prev.textContent = '\u2190';
+  prev.className = 'page-btn';
+  prev.disabled = currentPage === 1;
+  prev.onclick = () => goToPage(currentPage - 1);
+  container.appendChild(prev);
+
+  // Page numbers (show max 7 with ellipsis)
+  const pages = getPageRange(currentPage, totalPages);
+  for (const p of pages) {
+    if (p === '...') {
+      const dots = document.createElement('span');
+      dots.className = 'page-dots';
+      dots.textContent = '...';
+      container.appendChild(dots);
+    } else {
+      const btn = document.createElement('button');
+      btn.textContent = p;
+      btn.className = `page-btn ${p === currentPage ? 'active' : ''}`;
+      btn.onclick = () => goToPage(p);
+      container.appendChild(btn);
+    }
+  }
+
+  // Next
+  const next = document.createElement('button');
+  next.textContent = '\u2192';
+  next.className = 'page-btn';
+  next.disabled = currentPage === totalPages;
+  next.onclick = () => goToPage(currentPage + 1);
+  container.appendChild(next);
+
+  // Info
+  const info = document.createElement('span');
+  info.className = 'page-info';
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+  info.textContent = `${start}-${end} of ${totalItems}`;
+  container.appendChild(info);
+
+  document.getElementById('productGrid').after(container);
+}
+
+function removePagination() {
+  const el = document.getElementById('pagination');
+  if (el) el.remove();
+}
+
+function getPageRange(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [];
+  pages.push(1);
+  if (current > 3) pages.push('...');
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i);
+  }
+  if (current < total - 2) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+function goToPage(page) {
+  currentPage = page;
+  renderProducts(currentFilter, document.getElementById('searchInput').value, currentSubcategory);
+  document.getElementById('productGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
