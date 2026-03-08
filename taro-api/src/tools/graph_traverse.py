@@ -1,102 +1,99 @@
-"""Graph traversal tool using SurrealDB RELATE edges."""
+"""Graph traversal tool using SurrealDB RELATE edges — focused patterns."""
 
 from langchain_core.tools import tool
 from loguru import logger
 
 from db import get_db
 
-# All available edge types in the data graph
-EDGE_TYPES = {
-    "placed": {"from": "customer", "to": "order", "desc": "customer's purchase history"},
-    "contains": {"from": "order", "to": "product", "desc": "products in an order"},
-    "has_review": {"from": "order", "to": "review", "desc": "reviews for an order"},
-    "belongs_to": {"from": "product", "to": "category", "desc": "product categorization"},
-    "child_of": {"from": "category", "to": "category", "desc": "category hierarchy"},
-    "also_bought": {"from": "product", "to": "product", "desc": "co-purchase signal"},
-    "supports_goal": {"from": "product", "to": "goal", "desc": "goal-product mapping"},
-    "contains_ingredient": {"from": "product", "to": "ingredient", "desc": "product ingredients"},
-    "related_to": {"from": "product", "to": "product", "desc": "related products with reason"},
+PATTERNS = {
+    "also_bought": {
+        "query": "SELECT ->also_bought->product.{id, name, price, avg_rating, subcategory} AS results FROM {start}",
+        "label": "Customers who bought this also bought",
+    },
+    "ingredients": {
+        "query": "SELECT ->contains_ingredient->ingredient.{id, name, role, description} AS results FROM {start}",
+        "label": "Key ingredients",
+    },
+    "similar": {
+        "query": "SELECT ->related_to->product.{id, name, price, subcategory} AS results FROM {start}",
+        "label": "Related products",
+    },
+    "customer_history": {
+        "query": "SELECT ->placed->order->contains->product.{id, name, price, subcategory} AS results FROM {start}",
+        "label": "Purchase history",
+    },
+    "goal_products": {
+        "query": "SELECT <-supports_goal<-product.{id, name, price, avg_rating, subcategory} AS results FROM {start}",
+        "label": "Products supporting this goal",
+    },
 }
 
 
 @tool
-async def graph_traverse(
-    start_id: str,
-    edge_type: str = "belongs_to",
-    direction: str = "out",
-    depth: int = 1,
-) -> str:
-    """Traverse graph relationships from a starting record.
+async def graph_traverse(start_id: str, pattern: str) -> str:
+    """[ACT] Traverse the product/customer graph to find relationships.
 
-    Follows edges to discover connected records. Use source_id from search
-    results (e.g. 'product:impact_whey') as start_id.
+    Use high-level patterns instead of raw edges. Each pattern runs the
+    optimal multi-hop graph query and returns human-readable results.
 
-    Available edge types:
-      - placed: customer -> order (purchase history)
-      - contains: order -> product (order contents)
-      - has_review: order -> review (customer feedback)
-      - belongs_to: product -> category (what category)
-      - child_of: category -> category (subcategories)
-      - also_bought: product -> product (co-purchased items)
-      - supports_goal: product -> goal (goal mapping)
-      - contains_ingredient: product -> ingredient (ingredients)
-      - related_to: product -> product (similar/complementary)
+    PATTERNS (use these exact names):
+    - "also_bought": Products frequently bought together with start product
+    - "ingredients": Active ingredients in a product
+    - "similar": Products related to start product (same category, complementary)
+    - "customer_history": A customer's full purchase history (products they bought)
+    - "goal_products": Products that support a specific goal
+
+    Examples:
+        graph_traverse("product:hydrating_cream", "also_bought")
+        graph_traverse("customer:charlotte_gong", "customer_history")
+        graph_traverse("goal:clear_skin", "goal_products")
 
     Args:
-        start_id: Starting record ID (e.g. 'customer:abc123', 'product:impact_whey', 'category:protein').
-        edge_type: Relationship type (see list above).
-        direction: 'out' (->edge->) or 'in' (<-edge<-).
-        depth: Hops to traverse (1-3, default 1).
+        start_id: Starting record ID (e.g. 'product:impact_whey', 'customer:abc', 'goal:clear_skin').
+        pattern: One of: also_bought, ingredients, similar, customer_history, goal_products.
     """
-    logger.info(f"graph_traverse: {start_id} -{edge_type}-> depth={depth}")
+    logger.info(f"graph_traverse: {start_id} pattern={pattern}")
 
-    if edge_type not in EDGE_TYPES:
-        available = ", ".join(sorted(EDGE_TYPES.keys()))
-        return f"Unknown edge type: '{edge_type}'. Available: {available}"
+    if pattern not in PATTERNS:
+        available = ", ".join(PATTERNS.keys())
+        return f"Unknown pattern: {pattern}. Available: {available}"
 
+    p = PATTERNS[pattern]
     try:
         async with get_db() as db:
-            depth = min(depth, 3)  # Cap at 3 hops
+            query = p["query"].replace("{start}", start_id)
+            result = await db.query(query)
 
-            # SurrealDB 3.0: use ->edge->? (wildcard) instead of ->edge->*
-            if direction == "out":
-                arrow = "".join([f"->{edge_type}->?" for _ in range(depth)])
-            else:
-                arrow = "".join([f"<-{edge_type}<-?" for _ in range(depth)])
+            # Extract results from the graph query response
+            items = []
+            if result and isinstance(result[0], dict):
+                items = result[0].get("results", [])
+            elif result and isinstance(result, list):
+                # Flat list fallback
+                items = [r for r in result if isinstance(r, dict) and "results" in r]
+                if items:
+                    items = items[0].get("results", [])
 
-            surql = f"SELECT * FROM {start_id}{arrow}"
-            result = await db.query(surql)
+            if not items:
+                return f"{p['label']} for {start_id}: No results found."
 
-            # Handle both SurrealDB 3.0 result formats
-            if isinstance(result, list) and result:
-                if isinstance(result[0], dict) and "result" in result[0]:
-                    records = result[0].get("result", [])
-                else:
-                    records = result
-            else:
-                records = []
+            lines = [f"{p['label']} for {start_id} ({len(items)} results):"]
+            for item in items:
+                name = item.get("name", "?")
+                price = item.get("price")
+                extra = ""
+                if price:
+                    extra += f" — \u00a3{price:.2f}"
+                if item.get("avg_rating"):
+                    extra += f" \u2605{item['avg_rating']:.1f}"
+                if item.get("role"):
+                    extra += f" ({item['role']})"
+                if item.get("subcategory"):
+                    extra += f" [{item['subcategory']}]"
+                if item.get("description"):
+                    extra += f"\n    {item['description'][:120]}"
+                lines.append(f"  \u2022 {name}{extra}")
 
-            if not records:
-                edge_info = EDGE_TYPES[edge_type]
-                return (
-                    f"No {edge_type} connections from {start_id} "
-                    f"(direction: {direction}, depth: {depth}).\n"
-                    f"Edge '{edge_type}' connects {edge_info['from']} -> {edge_info['to']}: {edge_info['desc']}"
-                )
-
-            lines = [f"**Graph traversal from {start_id}** ({edge_type}, {direction}, depth {depth}):"]
-            for rec in records:
-                rec_id = rec.get("id", "?")
-                name = rec.get("name", rec.get("title", ""))
-                desc = rec.get("description", "")
-                lines.append(f"\n- **{rec_id}**: {name}")
-                if desc:
-                    lines.append(f"  {desc[:150]}")
-                # Show relation metadata if present
-                for meta_field in ("reason", "weight", "score", "comment", "sentiment"):
-                    val = rec.get(meta_field)
-                    if val is not None:
-                        lines.append(f"  {meta_field}: {val}")
             return "\n".join(lines)
     except Exception as e:
         logger.error(f"graph_traverse error: {e}")

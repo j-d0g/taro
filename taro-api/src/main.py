@@ -179,7 +179,7 @@ async def chat(request: ChatRequest):
                             name = user.get("name", request.user_id)
                             parts = [f"\n[User: {name} — customer:{request.user_id}]"]
                             # Graph hint so agent can traverse
-                            parts.append(f"Graph entry: cat /users/{request.user_id} or graph_traverse('customer:{request.user_id}', 'placed')")
+                            parts.append(f"Graph entry: cat /users/{request.user_id} or graph_traverse('customer:{request.user_id}', 'customer_history')")
                             # Profile fields
                             if user.get("bio"):
                                 parts.append(f"Bio: {user['bio']}")
