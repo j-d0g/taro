@@ -76,7 +76,7 @@ DEFINE INDEX idx_review_embedding ON review FIELDS embedding
     HNSW DIMENSION 1536 DIST COSINE;
 
 -- ============================================================
--- Category (vertical + subcategory hierarchy)
+-- Category (3 verticals: Skincare, Haircare, Body & Fragrance; 9 subcategories)
 -- ============================================================
 DEFINE TABLE category SCHEMAFULL;
 

@@ -25,75 +25,54 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 # Each maps to our subcategory for assignment
 # Brand pages work reliably (category pages 404). Map brands -> our subcategories.
 CRAWL_URLS = {
-    # Beauty / Skincare
-    "Beauty/Skincare": [
+    # ── Skincare ──────────────────────────────────────────────
+    "Skincare/Serums & Treatments": [
         "https://www.lookfantastic.com/c/brands/the-ordinary/",
+        "https://www.lookfantastic.com/c/brands/paula-s-choice/",
+        "https://www.lookfantastic.com/c/brands/the-inkey-list/",
+        "https://www.lookfantastic.com/c/brands/drunk-elephant/",
+    ],
+    "Skincare/Cleansers & Moisturisers": [
         "https://www.lookfantastic.com/c/brands/cerave/",
         "https://www.lookfantastic.com/c/brands/la-roche-posay/",
-        "https://www.lookfantastic.com/c/brands/paula-s-choice/",
+        "https://www.lookfantastic.com/c/brands/clinique/",
+        "https://www.lookfantastic.com/c/brands/weleda/",
     ],
-    # Beauty / Tools
-    "Beauty/Tools": [
-        "https://www.lookfantastic.com/c/brands/ghd/",
-        "https://www.lookfantastic.com/c/brands/beauty-works/",
-    ],
-    # Beauty / Bath & Body
-    "Beauty/Bath & Body": [
-        "https://www.lookfantastic.com/c/brands/sol-de-janeiro/",
-        "https://www.lookfantastic.com/c/brands/rituals/",
-    ],
-    # Beauty / Fragrance
-    "Beauty/Fragrance": [
-        "https://www.lookfantastic.com/c/brands/narciso-rodriguez/",
-        "https://www.lookfantastic.com/c/brands/calvin-klein/",
-    ],
-    # Beauty / Body Care
-    "Beauty/Body Care": [
+    "Skincare/Premium": [
+        "https://www.lookfantastic.com/c/brands/laneige/",
+        "https://www.lookfantastic.com/c/brands/tatcha/",
         "https://www.lookfantastic.com/c/brands/elemis/",
         "https://www.lookfantastic.com/c/brands/nuxe/",
     ],
-    # Beauty / Accessories
-    "Beauty/Accessories": [
+    # ── Haircare ──────────────────────────────────────────────
+    "Haircare/Styling Tools": [
+        "https://www.lookfantastic.com/c/brands/ghd/",
+        "https://www.lookfantastic.com/c/brands/beauty-works/",
+        "https://www.lookfantastic.com/c/brands/foreo/",
+    ],
+    "Haircare/Treatments": [
+        "https://www.lookfantastic.com/c/brands/moroccanoil/",
+    ],
+    "Haircare/Accessories": [
         "https://www.lookfantastic.com/c/brands/real-techniques/",
         "https://www.lookfantastic.com/c/brands/tangle-teezer/",
     ],
-    # Fitness / Equipment + Tech + Nutrition + Accessories + Drinks
-    "Fitness/Equipment": [
-        "https://www.lookfantastic.com/c/brands/clinique/",
-    ],
-    "Fitness/Tech": [
-        "https://www.lookfantastic.com/c/brands/foreo/",
-    ],
-    "Fitness/Nutrition": [
-        "https://www.lookfantastic.com/c/brands/the-inkey-list/",
-    ],
-    "Fitness/Accessories": [
-        "https://www.lookfantastic.com/c/brands/nars/",
-    ],
-    "Fitness/Drinks": [
-        "https://www.lookfantastic.com/c/brands/drunk-elephant/",
-    ],
-    # Wellness
-    "Wellness/Home Wellness": [
-        "https://www.lookfantastic.com/c/brands/laneige/",
-        "https://www.lookfantastic.com/c/brands/tatcha/",
-    ],
-    "Wellness/Family Health": [
-        "https://www.lookfantastic.com/c/brands/weleda/",
-        "https://www.lookfantastic.com/c/brands/bobbi-brown/",
-    ],
-    "Wellness/Mindfulness": [
+    # ── Body & Fragrance ─────────────────────────────────────
+    "Body & Fragrance/Bath & Body": [
+        "https://www.lookfantastic.com/c/brands/sol-de-janeiro/",
+        "https://www.lookfantastic.com/c/brands/rituals/",
+        "https://www.lookfantastic.com/c/brands/molton-brown/",
+        "https://www.lookfantastic.com/c/brands/this-works/",
         "https://www.lookfantastic.com/c/brands/neom/",
     ],
-    "Wellness/Sleep": [
-        "https://www.lookfantastic.com/c/brands/this-works/",
-    ],
-    "Wellness/Gifts": [
-        "https://www.lookfantastic.com/c/brands/molton-brown/",
-    ],
-    "Wellness/Lifestyle": [
+    "Body & Fragrance/Fragrance": [
+        "https://www.lookfantastic.com/c/brands/narciso-rodriguez/",
+        "https://www.lookfantastic.com/c/brands/calvin-klein/",
         "https://www.lookfantastic.com/c/brands/estee-lauder/",
-        "https://www.lookfantastic.com/c/brands/moroccanoil/",
+    ],
+    "Body & Fragrance/Makeup": [
+        "https://www.lookfantastic.com/c/brands/nars/",
+        "https://www.lookfantastic.com/c/brands/bobbi-brown/",
     ],
 }
 
