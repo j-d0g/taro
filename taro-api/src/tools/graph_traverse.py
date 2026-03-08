@@ -49,7 +49,7 @@ async def graph_traverse(
 
             surql = f"SELECT * FROM {start_id}{arrow}*"
             result = await db.query(surql)
-            records = result[0].get("result", []) if result else []
+            records = result or []
 
             if not records:
                 return f"No {edge_type} connections from {start_id} (direction: {direction}, depth: {depth})"
