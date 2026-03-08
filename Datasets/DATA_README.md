@@ -12,6 +12,7 @@ Datasets/
 ├── scrape_products.py      # Scrape product data from lookfantastic.com (Phase 1+2)
 ├── reprocess_phase2.py     # Re-process scraped pages with fixed parsing (Phase 2 only)
 ├── apply_scraped_v2.py     # Strategy B: round-robin remap products with scraped data
+├── remap_categories.py     # Remap products to real 3-vertical, 9-subcategory structure
 ├── check_schema.py         # Schema + integrity checker (reusable)
 └── DATA_README.md          # This file
 ```
@@ -23,7 +24,7 @@ Datasets/
 ### 1. Trimmed Olist + Scraped Products (Knowledge Graph backbone)
 
 Source: Brazilian E-Commerce (Kaggle), sampled to ~2.5K customers with full order chains.
-Products remapped from 64 generic Olist categories into 3 THG-style verticals, then overlaid with 431 real products scraped from lookfantastic.com (round-robin per subcategory).
+Products remapped from 64 generic Olist categories into 3 verticals with 9 subcategories based on real product brands, then overlaid with 431 real products scraped from lookfantastic.com (round-robin per subcategory).
 
 | File | Rows | Key columns |
 |---|---|---|
@@ -37,13 +38,27 @@ Products remapped from 64 generic Olist categories into 3 THG-style verticals, t
 - `order_id` links orders <-> reviews
 - `product_id` links orders <-> products
 
-**Product verticals (3 verticals, 17 subcategories):**
+**Product verticals (3 verticals, 9 subcategories):**
 
 | Vertical | Products | Subcategories |
 |---|---|---|
-| Beauty | 492 | Accessories, Bath & Body, Body Care, Fragrance, Skincare, Tools |
-| Fitness | 424 | Accessories, Drinks, Equipment, Nutrition, Tech |
-| Wellness | 974 | Family Health, Gifts, Home Wellness, Lifestyle, Mindfulness, Sleep |
+| Skincare | 512 | Serums & Treatments, Cleansers & Moisturisers, Premium |
+| Haircare | 658 | Styling Tools, Treatments, Accessories |
+| Body & Fragrance | 720 | Bath & Body, Fragrance, Makeup |
+
+**Brands per subcategory:**
+
+| Subcategory | Brands |
+|---|---|
+| Skincare / Serums & Treatments | The Ordinary, Paula's Choice, The Inkey List, Drunk Elephant |
+| Skincare / Cleansers & Moisturisers | CeraVe, La Roche-Posay, Clinique, Weleda |
+| Skincare / Premium | Laneige, Tatcha, Elemis, Nuxe |
+| Haircare / Styling Tools | ghd, Beauty Works, FOREO |
+| Haircare / Treatments | Moroccanoil |
+| Haircare / Accessories | Real Techniques, Tangle Teezer |
+| Body & Fragrance / Bath & Body | Sol de Janeiro, Rituals, Molton Brown, This Works, NEOM |
+| Body & Fragrance / Fragrance | Narciso Rodriguez, Calvin Klein, Estée Lauder |
+| Body & Fragrance / Makeup | NARS, Bobbi Brown |
 
 **Product data quality:**
 - 355 unique product names (round-robin mapped from 431 scraped products)
@@ -82,7 +97,8 @@ RELATE product:X -> also_bought -> product:Y SET weight = $count;
 ## Scripts
 
 - `python trim_dataset.py` — Regenerate trimmed/ from raw Olist (needs Customer_behaviour/)
-- `python remap_products.py` — Remap trimmed products to THG verticals (run after trim)
+- `python remap_products.py` — Remap trimmed products to THG verticals (legacy, run after trim)
+- `python remap_categories.py` — Remap to real 3-vertical, 9-subcategory structure (brand-based)
 - `python scrape_products.py` — Scrape products from lookfantastic.com (Phase 1: crawl brand pages, Phase 2: parse product pages)
 - `python reprocess_phase2.py` — Re-parse already-scraped product pages with fixed logic (no re-crawl)
 - `python apply_scraped_v2.py` — Round-robin remap products.csv with scraped data (Strategy B)
