@@ -3,7 +3,8 @@
  */
 
 let chatOpen = false;
-let threadId = crypto.randomUUID();
+let threadId = localStorage.getItem('taro_thread_id') || crypto.randomUUID();
+localStorage.setItem('taro_thread_id', threadId);
 let queryCount = 0;
 let learnedCount = 0;
 
@@ -236,6 +237,30 @@ function useSuggestion(el) {
   const suggestions = document.getElementById('chatSuggestions');
   if (suggestions) suggestions.style.display = 'none';
   sendMessage();
+}
+
+// ── New Chat ───────────────────────────────────────────
+
+function newChat() {
+  threadId = crypto.randomUUID();
+  localStorage.setItem('taro_thread_id', threadId);
+  document.getElementById('chatMessages').innerHTML = `
+    <div class="msg agent">
+      <div class="msg-bubble">
+        Hi! I'm your shopping assistant powered by SurrealDB's multi-model
+        engine. What are you looking for?
+      </div>
+    </div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Best sellers under &pound;30</button>
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Skincare routine for dry skin</button>
+      <button class="suggestion-chip" onclick="useSuggestion(this)">Compare retinol serums</button>
+    </div>
+  `;
+  queryCount = 0;
+  learnedCount = 0;
+  document.getElementById('queryCount').textContent = '0';
+  document.getElementById('learnedCount').textContent = '0';
 }
 
 // ── Keyboard shortcut (Escape to close) ────────────────
