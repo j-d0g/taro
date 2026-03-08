@@ -54,10 +54,82 @@ DEFINE FIELD description ON category TYPE option<string>;
 DEFINE FIELD parent ON category TYPE option<string>;
 
 -- ============================================================
--- Graph edges (RELATE)
+-- User profiles
 -- ============================================================
+DEFINE TABLE user SCHEMAFULL;
+
+DEFINE FIELD name ON user TYPE string;
+DEFINE FIELD email ON user TYPE option<string>;
+DEFINE FIELD profile_type ON user TYPE option<string>;          -- "beauty", "fitness", "wellness", "hybrid"
+DEFINE FIELD experience_level ON user TYPE option<string>;      -- "beginner", "intermediate", "advanced"
+DEFINE FIELD goals ON user TYPE option<array<string>>;
+DEFINE FIELD skin_type ON user TYPE option<string>;
+DEFINE FIELD dietary_restrictions ON user TYPE option<array<string>>;
+DEFINE FIELD preferences ON user TYPE option<object>;           -- flexible prefs object
+DEFINE FIELD context ON user TYPE option<string>;               -- distilled memory from conversations
+DEFINE FIELD created_at ON user TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Orders
+-- ============================================================
+DEFINE TABLE order SCHEMAFULL;
+
+DEFINE FIELD order_date ON order TYPE option<datetime>;
+DEFINE FIELD total ON order TYPE option<float>;
+DEFINE FIELD currency ON order TYPE string DEFAULT "GBP";
+DEFINE FIELD status ON order TYPE string DEFAULT "completed";
+DEFINE FIELD created_at ON order TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Reviews
+-- ============================================================
+DEFINE TABLE review SCHEMAFULL;
+
+DEFINE FIELD rating ON review TYPE option<int>;
+DEFINE FIELD comment ON review TYPE option<string>;
+DEFINE FIELD sentiment ON review TYPE option<string>;
+DEFINE FIELD created_at ON review TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Goals
+-- ============================================================
+DEFINE TABLE goal SCHEMAFULL;
+
+DEFINE FIELD name ON goal TYPE string;
+DEFINE FIELD description ON goal TYPE option<string>;
+DEFINE FIELD created_at ON goal TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Ingredients
+-- ============================================================
+DEFINE TABLE ingredient SCHEMAFULL;
+
+DEFINE FIELD name ON ingredient TYPE string;
+DEFINE FIELD category ON ingredient TYPE option<string>;
+DEFINE FIELD description ON ingredient TYPE option<string>;
+DEFINE FIELD created_at ON ingredient TYPE datetime DEFAULT time::now();
+
+-- ============================================================
+-- Product extra fields for broader dataset
+-- ============================================================
+DEFINE FIELD dietary_tags ON product TYPE option<array<string>>;
+DEFINE FIELD rating ON product TYPE option<float>;
+DEFINE FIELD review_count ON product TYPE option<int>;
+DEFINE FIELD vertical ON product TYPE option<string>;
+DEFINE FIELD subcategory ON product TYPE option<string>;
+
+-- ============================================================
+-- Graph edges (RELATE) - all 9 edge types
+-- ============================================================
+DEFINE TABLE placed_by SCHEMAFULL TYPE RELATION IN user OUT order;
+DEFINE TABLE contains SCHEMAFULL TYPE RELATION IN order OUT product;
+DEFINE TABLE has_review SCHEMAFULL TYPE RELATION IN order OUT review;
 DEFINE TABLE belongs_to SCHEMAFULL TYPE RELATION IN product OUT category;
 DEFINE TABLE child_of SCHEMAFULL TYPE RELATION IN category OUT category;
+DEFINE TABLE also_bought SCHEMAFULL TYPE RELATION IN product OUT product;
+DEFINE FIELD weight ON also_bought TYPE option<float>;
+DEFINE TABLE supports_goal SCHEMAFULL TYPE RELATION IN product OUT goal;
+DEFINE TABLE contains_ingredient SCHEMAFULL TYPE RELATION IN product OUT ingredient;
 DEFINE TABLE related_to SCHEMAFULL TYPE RELATION IN product OUT product;
 DEFINE FIELD reason ON related_to TYPE option<string>;
 
