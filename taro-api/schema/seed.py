@@ -189,21 +189,379 @@ async def seed():
             "concerns = $concerns, preferences = $preferences, "
             "allergies = $allergies, age = $age, bio = $bio, "
             "profile_type = $profile_type, experience_level = $experience_level, "
-            "preferred_brands = $preferred_brands",
+            "preferred_brands = $preferred_brands, "
+            "email = $email, goals = $goals, "
+            "context = $context, memory = $memory",
             {
                 "name": "Charlotte Gong",
                 "city": "London",
                 "state": None,
                 "skin_type": "Combination",
-                "hair_type": "Fine, straight",
-                "concerns": ["Hydration", "Anti-aging prevention", "T-zone oil control", "Sensitivity"],
-                "preferences": ["Korean skincare", "Multi-step routines", "Fragrance-free", "Lightweight textures"],
-                "allergies": ["Synthetic fragrance", "Denatured alcohol"],
+                "hair_type": "Fine, straight, colour-treated (balayage)",
+                "concerns": [
+                    "Hydration", "Anti-aging prevention", "T-zone oil control",
+                    "Sensitivity", "Hair volume", "Colour preservation",
+                    "Dry elbows in winter", "Brittle nails",
+                ],
+                "preferences": [
+                    "Korean skincare", "Multi-step routines", "Fragrance-free face products",
+                    "Lightweight textures", "Gel-cream over heavy cream",
+                    "Cruelty-free", "Vegan-preferred", "Sustainable packaging",
+                    "Sulphate-free shampoo", "Light floral body scents",
+                ],
+                "allergies": ["Synthetic fragrance", "Denatured alcohol", "SLS/SLES", "Parabens"],
                 "age": 27,
-                "bio": "Junior architect in London with a passion for Korean-inspired multi-step skincare. Combination skin with dry cheeks and an oily T-zone. Focused on hydration and early anti-aging prevention.",
-                "profile_type": "Skincare enthusiast",
+                "bio": (
+                    "Junior architect in London with a passion for Korean-inspired "
+                    "multi-step skincare. Combination skin with dry cheeks and an oily "
+                    "T-zone. Fine colour-treated hair needing volume and protection. "
+                    "Evening bath ritual lover. Researches ingredients before buying."
+                ),
+                "profile_type": "Beauty enthusiast",
                 "experience_level": "Intermediate",
-                "preferred_brands": ["LANEIGE", "Clinique", "The INKEY List", "Weleda", "NEOM"],
+                "preferred_brands": [
+                    "LANEIGE", "Clinique", "The INKEY List", "Weleda", "NEOM",
+                    "Olaplex", "Moroccanoil", "Molton Brown",
+                ],
+                "email": "charlotte.gong@taro.ai",
+                "goals": ["hydration", "anti_aging", "clear_skin", "sun_protection"],
+                "context": (
+                    "Charlotte is a 27-year-old skincare-maximalist architect in London "
+                    "(hard water area, temperate humid climate). SKINCARE: Combination "
+                    "skin — dry cheeks need deep hydration, oily T-zone needs oil control. "
+                    "Runs a 5-7 step K-beauty routine AM & PM. Holy grail product is "
+                    "Clinique Moisture Surge — she rated it 5/5 calling it 'bouncy, "
+                    "fragrance-free hydration'. Loves gel-cream and water-based textures. "
+                    "Hates heavy/rich creams — rated Weleda 3/5 saying 'too rich for "
+                    "combination skin, winter only on dry patches'. Active ingredients "
+                    "she already uses: hyaluronic acid, ceramides, retinol, niacinamide. "
+                    "Started retinol at 27 for early anti-aging prevention. Strictly "
+                    "avoids synthetic fragrance, denatured alcohol, SLS, and parabens. "
+                    "HAIRCARE: Fine straight colour-treated hair (balayage). Washes 3x "
+                    "per week. Needs volume without weight and colour protection. Uses "
+                    "heat tools (blow-dry, occasional straightener). Oily roots, dry "
+                    "ends. Prefers sulphate-free shampoo. BODY & FRAGRANCE: Loves "
+                    "evening bath rituals with candles. Scent profile: light florals "
+                    "(peony, bergamot, white tea) — dislikes musk and patchouli. "
+                    "Fragrance-free on face but welcomes scent on body. Eczema-prone "
+                    "elbows in winter. Brittle nails. LIFESTYLE: Urban office worker, "
+                    "yoga 2x/week, budget sweet spot £15-55 per product, total spend "
+                    "~£213 across 5 orders. Values cruelty-free, vegan-preferred, "
+                    "sustainable packaging. Research-heavy buyer — reads ingredient "
+                    "lists before purchasing. Switches routine seasonally: lighter in "
+                    "summer, richer in winter."
+                ),
+                "memory": [
+                    "Holy grail: Clinique Moisture Surge — lightweight, bouncy, fragrance-free gel-cream (rated 5/5)",
+                    "Weleda kit too heavy for combination skin — only usable on dry patches in winter (rated 3/5)",
+                    "Loves ceramide overnight repair — wanted a bigger tube (rated 4/5)",
+                    "Prefers gel-cream and water-based textures over rich creams or oils",
+                    "Travel-size sets appeal to her — rated Clinique travel set 5/5",
+                    "Started retinol early (age 27) for anti-aging prevention via The INKEY List",
+                    "Would rebuy: Moisture Surge, ceramide treatment. Would NOT rebuy: Weleda kit",
+                    "Hair: needs volume products that won't weigh down fine hair or strip colour",
+                    "Body: evening bath ritual person, loves peony and bergamot scents",
+                    "Brittle nails — interested in biotin and nail treatments",
+                ],
+            },
+        )
+
+        # ── 3c. Jordan (grooming minimalist) ────────────────
+        print("  + Jordan (demo customer — grooming minimalist)")
+        await db.query(
+            "CREATE customer:`jordan` SET "
+            "name = $name, city = $city, state = $state, "
+            "skin_type = $skin_type, hair_type = $hair_type, "
+            "concerns = $concerns, preferences = $preferences, "
+            "allergies = $allergies, age = $age, bio = $bio, "
+            "profile_type = $profile_type, experience_level = $experience_level, "
+            "preferred_brands = $preferred_brands, "
+            "email = $email, goals = $goals, "
+            "context = $context, memory = $memory",
+            {
+                "name": "Jordan",
+                "city": "Manchester",
+                "state": None,
+                "skin_type": "Oily",
+                "hair_type": "Thick, wavy, prone to frizz",
+                "concerns": [
+                    "Acne scarring", "Oily T-zone", "Large pores",
+                    "Frizz control", "Razor burn", "Post-gym breakouts",
+                ],
+                "preferences": [
+                    "Minimalist routine", "3 steps max", "Unscented",
+                    "Matte finish", "Fast-absorbing", "No greasy residue",
+                    "Gym-proof", "Anti-shine",
+                ],
+                "allergies": ["Coconut oil", "Heavy silicones"],
+                "age": 26,
+                "bio": (
+                    "Personal trainer in Manchester. Oily skin that breaks out "
+                    "after workouts. Wants a fast, no-fuss routine — cleanser, "
+                    "treatment, moisturiser, done. Thick wavy hair that frizzes "
+                    "in humidity. Prefers unscented, matte-finish products."
+                ),
+                "profile_type": "Grooming minimalist",
+                "experience_level": "Beginner",
+                "preferred_brands": [
+                    "The INKEY List", "Clinique", "Moroccanoil",
+                ],
+                "email": "jordan@taro.ai",
+                "goals": ["clear_skin", "hydration"],
+                "context": (
+                    "Jordan is a 26-year-old personal trainer in Manchester. "
+                    "SKINCARE: Oily skin prone to post-gym breakouts and acne "
+                    "scarring. Large pores on nose and cheeks. Hates greasy products "
+                    "— needs matte finish that survives sweat. Runs a strict 3-step "
+                    "routine: salicylic acid cleanser, niacinamide serum, lightweight "
+                    "gel moisturiser. Rated The INKEY List Salicylic Acid Cleanser 5/5 "
+                    "saying 'only cleanser that keeps my skin clear after heavy sessions'. "
+                    "Tried Clinique Dramatically Different and liked it — light enough "
+                    "for oily skin. Avoids coconut oil and heavy silicones. "
+                    "HAIRCARE: Thick wavy hair that frizzes in Manchester humidity. "
+                    "Washes daily after gym. Needs frizz control without weight. Tried "
+                    "Moroccanoil Treatment and loved the shine without grease. "
+                    "BODY & FRAGRANCE: Not into fragrance — prefers functional products. "
+                    "Uses Molton Brown Eucalyptus shower gel post-gym for the cooling "
+                    "effect. Gets razor burn on neck — needs soothing aftershave care. "
+                    "LIFESTYLE: Trains 6x/week, outdoors and gym. Budget £5-25 per "
+                    "product — value-focused. Total spend ~£95 across 3 orders. "
+                    "Wants products that work, not luxury packaging."
+                ),
+                "memory": [
+                    "Best cleanser: INKEY List Salicylic Acid — only thing keeping post-gym breakouts at bay (rated 5/5)",
+                    "Clinique Dramatically Different works well for oily skin — lightweight enough (rated 4/5)",
+                    "Moroccanoil Treatment gave great shine without weighing down thick hair (rated 4/5)",
+                    "Hates greasy residue — any product must absorb fast",
+                    "Gets razor burn easily — needs gentle, alcohol-free aftershave products",
+                    "Molton Brown Eucalyptus shower gel is his post-gym staple",
+                    "Wants to address acne scarring but doesn't know where to start",
+                ],
+            },
+        )
+
+        # ── 3d. Shaswat (ingredient-obsessed) ─────────────────
+        print("  + Shaswat (demo customer — ingredient scientist)")
+        await db.query(
+            "CREATE customer:`shaswat` SET "
+            "name = $name, city = $city, state = $state, "
+            "skin_type = $skin_type, hair_type = $hair_type, "
+            "concerns = $concerns, preferences = $preferences, "
+            "allergies = $allergies, age = $age, bio = $bio, "
+            "profile_type = $profile_type, experience_level = $experience_level, "
+            "preferred_brands = $preferred_brands, "
+            "email = $email, goals = $goals, "
+            "context = $context, memory = $memory",
+            {
+                "name": "Shaswat",
+                "city": "Cambridge",
+                "state": None,
+                "skin_type": "Dry, eczema-prone",
+                "hair_type": "Straight, thinning at crown",
+                "concerns": [
+                    "Eczema flare-ups", "Barrier repair", "Redness",
+                    "Hair thinning", "Scalp dryness", "Dry hands from lab work",
+                ],
+                "preferences": [
+                    "Ingredient-first shopping", "Clinical formulations",
+                    "Fragrance-free everything", "Ceramide-based",
+                    "Dermatologist-recommended", "No essential oils",
+                ],
+                "allergies": ["Essential oils", "Lanolin", "Artificial dyes"],
+                "age": 29,
+                "bio": (
+                    "PhD researcher at Cambridge. Extremely dry, eczema-prone skin — "
+                    "reads every ingredient list before buying. Believes in ceramides, "
+                    "peptides, and clinical evidence. Hair thinning at the crown, looking "
+                    "for science-backed solutions. Fragrance-free absolutist."
+                ),
+                "profile_type": "Ingredient scientist",
+                "experience_level": "Advanced",
+                "preferred_brands": [
+                    "The INKEY List", "Clinique", "Weleda", "The Ordinary",
+                ],
+                "email": "shaswat@taro.ai",
+                "goals": ["hydration", "anti_aging", "hair_growth"],
+                "context": (
+                    "Shaswat is a 29-year-old PhD researcher in Cambridge with "
+                    "extremely dry, eczema-prone skin. SKINCARE: Barrier repair is "
+                    "his #1 priority. Uses ceramide-heavy routine — INKEY List Bio-Active "
+                    "Ceramide Moisturizer is his staple (rated 5/5: 'finally a "
+                    "moisturiser that calms my eczema without irritation'). Also uses "
+                    "The Ordinary Multi-Peptide serum for anti-aging. Strictly avoids "
+                    "essential oils, lanolin, and artificial dyes — all trigger flare-ups. "
+                    "Fragrance-free absolutist. Reads clinical studies before trying "
+                    "anything new. Rated Weleda Skin Food 3/5 — 'too many botanicals, "
+                    "made my eczema worse'. HAIRCARE: Straight hair thinning at the "
+                    "crown. Looking for evidence-based treatments — interested in "
+                    "peptide-based scalp serums. Dry scalp from hard water in Cambridge. "
+                    "BODY: Chronic dry hands from lab work — needs intensive hand cream. "
+                    "No interest in fragrance or bath products. LIFESTYLE: Academic, "
+                    "budget-conscious, £10-30 per product. Total spend ~£120 across "
+                    "4 orders. Buys based on ingredient lists and PubMed, not marketing."
+                ),
+                "memory": [
+                    "Holy grail: INKEY List Ceramide Moisturizer — only moisturiser that calms eczema (rated 5/5)",
+                    "Weleda Skin Food triggered eczema — too many botanical extracts (rated 3/5)",
+                    "The Ordinary Multi-Peptide serum is his anti-aging pick — values peptide science",
+                    "Absolutely no essential oils — triggers eczema flare-ups immediately",
+                    "Hair thinning at crown — wants science-backed peptide scalp treatments",
+                    "Dry hands from lab work — needs intensive barrier repair hand cream",
+                    "Reads PubMed before buying anything — respects clinical evidence over marketing",
+                    "Fragrance-free absolutist across ALL categories",
+                ],
+            },
+        )
+
+        # ── 3e. Baran (fragrance collector) ────────────────────
+        print("  + Baran (demo customer — fragrance collector)")
+        await db.query(
+            "CREATE customer:`baran` SET "
+            "name = $name, city = $city, state = $state, "
+            "skin_type = $skin_type, hair_type = $hair_type, "
+            "concerns = $concerns, preferences = $preferences, "
+            "allergies = $allergies, age = $age, bio = $bio, "
+            "profile_type = $profile_type, experience_level = $experience_level, "
+            "preferred_brands = $preferred_brands, "
+            "email = $email, goals = $goals, "
+            "context = $context, memory = $memory",
+            {
+                "name": "Baran",
+                "city": "London",
+                "state": None,
+                "skin_type": "Normal",
+                "hair_type": "Thick, curly, coarse",
+                "concerns": [
+                    "Fragrance layering", "Curl definition",
+                    "Dry skin in winter", "Gift shopping",
+                ],
+                "preferences": [
+                    "Luxury packaging", "Niche fragrances", "Woody and amber scents",
+                    "Curl-friendly", "Sulphate-free", "Gift sets",
+                    "Premium brands", "Candles and diffusers",
+                ],
+                "allergies": [],
+                "age": 28,
+                "bio": (
+                    "Creative director at a branding agency in Shoreditch. Obsessed with "
+                    "fragrance layering and collecting scents. Thick curly hair that needs "
+                    "moisture and definition. Loves luxury packaging and premium gifting."
+                ),
+                "profile_type": "Fragrance collector",
+                "experience_level": "Advanced",
+                "preferred_brands": [
+                    "Molton Brown", "Estée Lauder", "Sol de Janeiro", "NEOM",
+                    "Moroccanoil",
+                ],
+                "email": "baran@taro.ai",
+                "goals": ["hydration"],
+                "context": (
+                    "Baran is a 28-year-old creative director in Shoreditch, London. "
+                    "SKINCARE: Normal skin, low-maintenance — Clinique Dramatically "
+                    "Different is his daily moisturiser. Not fussy about skincare. "
+                    "Gets dry in winter, uses richer cream seasonally. "
+                    "HAIRCARE: Thick curly coarse hair — his biggest grooming focus. "
+                    "Moroccanoil Treatment is essential for curl definition and shine "
+                    "(rated 5/5: 'the only oil that doesn't weigh down my curls'). "
+                    "Sulphate-free shampoo only. Weekly deep conditioning mask. "
+                    "BODY & FRAGRANCE: This is his passion. Collects fragrances — "
+                    "prefers woody, amber, oud notes. Loves Estée Lauder Bronze Goddess "
+                    "Nuit (rated 5/5: 'complex, evening-perfect'). Molton Brown "
+                    "Coastal Cypress is his everyday shower gel and hand wash. "
+                    "Burns NEOM candles at home — owns 3 different scents. Buys gift "
+                    "sets frequently for friends. Sol de Janeiro for summer body care. "
+                    "LIFESTYLE: Design-conscious, cares about packaging aesthetics. "
+                    "Budget £20-70 per product, higher for fragrances. Total spend "
+                    "~£340 across 5 orders. Shops seasonally — woody in winter, "
+                    "citrus/fresh in summer."
+                ),
+                "memory": [
+                    "Fragrance obsessed: collects and layers scents — woody, amber, oud preferred",
+                    "Moroccanoil Treatment is essential for his curls — only oil that works without weight (rated 5/5)",
+                    "Estée Lauder Bronze Goddess Nuit is his signature evening scent (rated 5/5)",
+                    "Molton Brown Coastal Cypress is his everyday scent — shower gel + hand wash",
+                    "Burns NEOM candles at home — owns Happiness, Sleep, and Rosy scents",
+                    "Buys gift sets frequently — good target for seasonal gift recommendations",
+                    "Thick curly hair needs sulphate-free + deep conditioning weekly",
+                    "Sol de Janeiro for summer body care — loves tropical scents in warm weather",
+                ],
+            },
+        )
+
+        # ── 3f. Desmond (anti-aging early adopter) ─────────────
+        print("  + Desmond (demo customer — anti-aging early adopter)")
+        await db.query(
+            "CREATE customer:`desmond` SET "
+            "name = $name, city = $city, state = $state, "
+            "skin_type = $skin_type, hair_type = $hair_type, "
+            "concerns = $concerns, preferences = $preferences, "
+            "allergies = $allergies, age = $age, bio = $bio, "
+            "profile_type = $profile_type, experience_level = $experience_level, "
+            "preferred_brands = $preferred_brands, "
+            "email = $email, goals = $goals, "
+            "context = $context, memory = $memory",
+            {
+                "name": "Desmond",
+                "city": "Edinburgh",
+                "state": None,
+                "skin_type": "Sensitive, dehydrated",
+                "hair_type": "Short, low-maintenance buzz cut",
+                "concerns": [
+                    "Fine lines around eyes", "Dehydrated skin",
+                    "Dark circles", "Sun damage prevention",
+                    "Stress-related skin dullness",
+                ],
+                "preferences": [
+                    "Anti-aging serums", "Eye creams", "SPF daily",
+                    "Night repair treatments", "Luxury skincare",
+                    "Relaxation and wellness", "Evidence-based",
+                ],
+                "allergies": ["Retinol above 0.5%", "Glycolic acid"],
+                "age": 30,
+                "bio": (
+                    "Junior doctor in Edinburgh. Long hospital shifts leave his "
+                    "skin dehydrated and dull. Started an anti-aging routine at 28 — "
+                    "focused on eye cream, serums, and SPF. Sensitive skin that can't "
+                    "tolerate strong actives. Uses NEOM for stress relief after shifts."
+                ),
+                "profile_type": "Anti-aging early adopter",
+                "experience_level": "Intermediate",
+                "preferred_brands": [
+                    "Estée Lauder", "Clinique", "NEOM", "The Ordinary",
+                ],
+                "email": "desmond@taro.ai",
+                "goals": ["anti_aging", "hydration", "sun_protection"],
+                "context": (
+                    "Desmond is a 30-year-old junior doctor in Edinburgh. "
+                    "SKINCARE: Sensitive, dehydrated skin aggravated by long hospital "
+                    "shifts and air conditioning. Primary concern is early anti-aging — "
+                    "fine lines around eyes and forehead. Daily SPF is non-negotiable. "
+                    "Holy grail: Estée Lauder Advanced Night Repair serum (rated 5/5: "
+                    "'visible improvement in skin texture after 2 weeks'). Uses Estée "
+                    "Lauder Eye Lift cream for dark circles from night shifts. "
+                    "Can't tolerate retinol above 0.5% or glycolic acid — both cause "
+                    "redness and peeling. The Ordinary Multi-Peptide serum is his "
+                    "gentle anti-aging alternative. Clinique Dramatically Different "
+                    "as daily moisturiser. HAIRCARE: Buzz cut, zero maintenance. Only "
+                    "buys shampoo occasionally. BODY & FRAGRANCE: Uses NEOM for stress "
+                    "relief — owns the Sleep essential oil blend and the Wellbeing Pod "
+                    "diffuser. Burns NEOM candles during days off. Not a fragrance "
+                    "collector but appreciates calming scents (lavender, chamomile). "
+                    "LIFESTYLE: High-stress medical career, sleep-deprived. Budget "
+                    "£15-55 per product — willing to invest in proven anti-aging. "
+                    "Total spend ~£280 across 4 orders. Shops based on clinical "
+                    "reviews and dermatologist recommendations."
+                ),
+                "memory": [
+                    "Holy grail: Estée Lauder Advanced Night Repair — visible texture improvement in 2 weeks (rated 5/5)",
+                    "Estée Lauder Eye Lift works well for dark circles from night shifts (rated 4/5)",
+                    "Cannot tolerate retinol above 0.5% — causes redness and peeling",
+                    "Cannot tolerate glycolic acid — too harsh for sensitive skin",
+                    "The Ordinary Multi-Peptide serum is his gentle anti-aging pick",
+                    "Uses NEOM Sleep essential oil + diffuser for stress relief after hospital shifts",
+                    "Daily SPF is non-negotiable — sun damage prevention is top priority",
+                    "Clinique Dramatically Different is reliable daily moisturiser",
+                ],
             },
         )
 
@@ -318,6 +676,55 @@ async def seed():
                 else:
                     print(f"    WARNING: Product {pid}... not found in CSV")
 
+        # ── 5c. Demo customer orders (Jordan, Shaswat, Baran, Desmond) ─
+        demo_customers_orders = {
+            "jordan": [
+                {"id": "jordan_ord_1", "total": 16.60, "products": ["07761550", "ce5b9184"]},
+                {"id": "jordan_ord_2", "total": 53.50, "products": ["53b36df6", "53c61580"]},
+                {"id": "jordan_ord_3", "total": 25.50, "products": ["3fcd8dfe"]},
+            ],
+            "shaswat": [
+                {"id": "shaswat_ord_1", "total": 15.19, "products": ["94e25ee5"]},
+                {"id": "shaswat_ord_2", "total": 53.50, "products": ["3fcd8dfe", "19c91ef9"]},
+                {"id": "shaswat_ord_3", "total": 7.00, "products": ["ce5b9184"]},
+                {"id": "shaswat_ord_4", "total": 11.00, "products": ["d245838e"]},
+            ],
+            "baran": [
+                {"id": "baran_ord_1", "total": 70.00, "products": ["629beb8e"]},
+                {"id": "baran_ord_2", "total": 62.50, "products": ["53c61580", "47969dd9"]},
+                {"id": "baran_ord_3", "total": 48.00, "products": ["53b36df6", "4a9947ec"]},
+                {"id": "baran_ord_4", "total": 58.00, "products": ["01b154ce"]},
+                {"id": "baran_ord_5", "total": 105.00, "products": ["bf06a69b"]},
+            ],
+            "desmond": [
+                {"id": "desmond_ord_1", "total": 100.75, "products": ["e13cf838", "fedccbd5"]},
+                {"id": "desmond_ord_2", "total": 18.40, "products": ["fff0a542"]},
+                {"id": "desmond_ord_3", "total": 35.00, "products": ["ce5b9184", "19c91ef9"]},
+                {"id": "desmond_ord_4", "total": 124.00, "products": ["f092eaa7", "e8349493"]},
+            ],
+        }
+        for cust_id, orders_list in demo_customers_orders.items():
+            print(f"  + {cust_id}'s {len(orders_list)} orders")
+            for co in orders_list:
+                oid = co["id"]
+                await db.query(
+                    f"CREATE order:`{oid}` SET price = $price, total = $total, "
+                    "status = 'delivered', currency = 'GBP'",
+                    {"price": co["total"], "total": co["total"]},
+                )
+                await db.query(f"RELATE customer:`{cust_id}`->placed->order:`{oid}`")
+                for pid in co["products"]:
+                    full_pid = None
+                    for pr in products_raw:
+                        if pr["product_id"].startswith(pid):
+                            full_pid = pr["product_id"]
+                            break
+                    if full_pid:
+                        await db.query(f"RELATE order:`{oid}`->contains->product:`{full_pid}`")
+                        customer_products[cust_id].add(full_pid)
+                    else:
+                        print(f"    WARNING: Product {pid}... not found in CSV")
+
         # ── 6. Reviews + has_review ───────────────────────────
         print("[7/9] Seeding reviews...")
         order_ids_in_db = set(row["order_id"] for row in orders_raw)
@@ -391,6 +798,90 @@ async def seed():
         review_texts = [r["comment"] for r in charlotte_reviews]
         review_vecs = await embeddings.aembed_documents(review_texts)
         for r, vec in zip(charlotte_reviews, review_vecs):
+            await db.query(
+                f"CREATE review:`{r['id']}` SET "
+                "score = $score, comment = $comment, sentiment = $sentiment, "
+                "embedding = $embedding",
+                {
+                    "score": r["score"],
+                    "comment": r["comment"],
+                    "sentiment": r["sentiment"],
+                    "embedding": vec,
+                },
+            )
+            await db.query(f"RELATE order:`{r['order']}`->has_review->review:`{r['id']}`")
+
+        # ── 6c. Demo customer reviews (Jordan, Shaswat, Baran, Desmond) ─
+        demo_reviews = [
+            # Jordan
+            {
+                "id": "jordan_rev_1", "order": "jordan_ord_1", "score": 5,
+                "comment": "Only cleanser that keeps my skin clear after heavy gym sessions. No breakouts in 3 weeks — that's a first.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "jordan_rev_2", "order": "jordan_ord_2", "score": 4,
+                "comment": "Moroccanoil tames my frizz without making my hair greasy. Light enough for daily use after washing.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "jordan_rev_3", "order": "jordan_ord_2", "score": 5,
+                "comment": "Eucalyptus shower gel is perfect post-workout — cooling sensation and the scent doesn't linger too long.",
+                "sentiment": "positive",
+            },
+            # Shaswat
+            {
+                "id": "shaswat_rev_1", "order": "shaswat_ord_1", "score": 5,
+                "comment": "Finally a moisturiser that calms my eczema without irritation. Ceramide-based, fragrance-free, no essential oils — exactly what my skin needs.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "shaswat_rev_2", "order": "shaswat_ord_2", "score": 3,
+                "comment": "Weleda Skin Food has too many botanical extracts for eczema-prone skin. Triggered a mild flare-up on my cheeks. Returned to my ceramide routine.",
+                "sentiment": "negative",
+            },
+            {
+                "id": "shaswat_rev_3", "order": "shaswat_ord_2", "score": 4,
+                "comment": "The Ordinary Multi-Peptide serum absorbs well and no irritation. Good evidence for peptides in anti-aging. Will repurchase.",
+                "sentiment": "positive",
+            },
+            # Baran
+            {
+                "id": "baran_rev_1", "order": "baran_ord_1", "score": 5,
+                "comment": "Bronze Goddess Nuit is intoxicating — complex amber and sandalwood, perfect for evenings out. Gets compliments every time.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "baran_rev_2", "order": "baran_ord_2", "score": 5,
+                "comment": "Moroccanoil is the only oil that defines my curls without weighing them down. Smells incredible too.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "baran_rev_3", "order": "baran_ord_4", "score": 4,
+                "comment": "NEOM Rosy candle fills the whole flat — beautiful floral scent. Burns evenly. Bought another as a gift for my mum.",
+                "sentiment": "positive",
+            },
+            # Desmond
+            {
+                "id": "desmond_rev_1", "order": "desmond_ord_1", "score": 5,
+                "comment": "Advanced Night Repair changed my skin — visible improvement in texture and fine lines after just 2 weeks. Worth every penny for night shift recovery.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "desmond_rev_2", "order": "desmond_ord_1", "score": 4,
+                "comment": "Eye Lift cream reduced my dark circles noticeably. Not a miracle cure for sleep deprivation, but the best eye cream I've tried.",
+                "sentiment": "positive",
+            },
+            {
+                "id": "desmond_rev_3", "order": "desmond_ord_2", "score": 5,
+                "comment": "NEOM Sleep oil is my wind-down ritual after night shifts. Few drops on the pillow and I'm out. Lavender and chamomile blend is perfect.",
+                "sentiment": "positive",
+            },
+        ]
+        print(f"  + {len(demo_reviews)} demo customer reviews")
+        demo_review_texts = [r["comment"] for r in demo_reviews]
+        demo_review_vecs = await embeddings.aembed_documents(demo_review_texts)
+        for r, vec in zip(demo_reviews, demo_review_vecs):
             await db.query(
                 f"CREATE review:`{r['id']}` SET "
                 "score = $score, comment = $comment, sentiment = $sentiment, "
