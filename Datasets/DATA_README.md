@@ -4,10 +4,14 @@
 
 ```
 Datasets/
-├── trimmed/                # Trimmed Olist (5K customers, THG-style verticals)
+├── trimmed/                # Trimmed Olist + scraped product data
+├── scraped_products.json   # 431 products scraped from lookfantastic.com
 ├── bitext_faq.csv          # Bitext FAQ dataset (26,872 Q&A pairs)
 ├── trim_dataset.py         # Generate trimmed/ from raw Olist data (seed=42)
 ├── remap_products.py       # Remap products to THG-style verticals
+├── scrape_products.py      # Scrape product data from lookfantastic.com (Phase 1+2)
+├── reprocess_phase2.py     # Re-process scraped pages with fixed parsing (Phase 2 only)
+├── apply_scraped_v2.py     # Strategy B: round-robin remap products with scraped data
 ├── check_schema.py         # Schema + integrity checker (reusable)
 └── DATA_README.md          # This file
 ```
@@ -16,31 +20,35 @@ Datasets/
 
 ## Two Data Layers
 
-### 1. Trimmed Olist (Knowledge Graph backbone)
+### 1. Trimmed Olist + Scraped Products (Knowledge Graph backbone)
 
-Source: Brazilian E-Commerce (Kaggle), sampled to 5K customers with full order chains.
-Products remapped from 64 generic Olist categories into 3 THG-style verticals.
+Source: Brazilian E-Commerce (Kaggle), sampled to ~2.5K customers with full order chains.
+Products remapped from 64 generic Olist categories into 3 THG-style verticals, then overlaid with 431 real products scraped from lookfantastic.com (round-robin per subcategory).
 
 | File | Rows | Key columns |
 |---|---|---|
-| customers.csv | 5,153 | customer_id, customer_unique_id, customer_name, city, state |
-| products.csv | 3,943 | product_id, product_name, vertical, subcategory, price, avg_rating, description |
-| orders.csv | 5,849 | order_id, customer_id, product_id, order_status, price, freight_value |
-| reviews.csv | 5,101 | review_id, order_id, review_score, comment, sentiment |
-| payments.csv | 5,431 | order_id, payment_type, installments, value |
+| customers.csv | 2,526 | customer_id, customer_name, customer_city, customer_state |
+| products.csv | 1,890 | product_id, product_name, vertical, subcategory, price, avg_rating, description, weight_g, image_url, product_url |
+| orders.csv | 2,912 | order_id, customer_id, product_id, price |
+| reviews.csv | 2,515 | review_id, order_id, review_score, review_comment_message, sentiment |
 
 **Join keys:**
 - `customer_id` links customers <-> orders
-- `order_id` links orders <-> reviews, orders <-> payments
+- `order_id` links orders <-> reviews
 - `product_id` links orders <-> products
 
-**Product verticals (3 verticals, 18 subcategories):**
+**Product verticals (3 verticals, 17 subcategories):**
 
 | Vertical | Products | Subcategories |
 |---|---|---|
-| Fitness | 1,448 | Equipment, Tech, Accessories, Nutrition, Drinks |
-| Beauty | 1,265 | Bath & Body, Tools, Skincare, Fragrance, Accessories, Grooming, Body Care |
-| Wellness | 1,230 | Home Wellness, Lifestyle, Gifts, Mindfulness, Family Health, Sleep |
+| Beauty | 492 | Accessories, Bath & Body, Body Care, Fragrance, Skincare, Tools |
+| Fitness | 424 | Accessories, Drinks, Equipment, Nutrition, Tech |
+| Wellness | 974 | Family Health, Gifts, Home Wellness, Lifestyle, Mindfulness, Sleep |
+
+**Product data quality:**
+- 355 unique product names (round-robin mapped from 431 scraped products)
+- All products have real image URLs (`static.thcdn.com`) and product URLs (`lookfantastic.com`)
+- Descriptions are complete sentences (truncated at sentence boundary within 300 chars)
 
 ### 2. Bitext FAQ (FAQ vector search + support ticket history)
 
@@ -57,34 +65,25 @@ Phase 1: Define schema (SCHEMAFULL tables + HNSW/BM25 indexes)
 Phase 2: Ingest nodes (customer, product, order, review, faq)
 Phase 3: Ingest edges (RELATE customer -> placed -> order, RELATE order -> contains -> product)
 Phase 4: Generate + store embeddings (products, reviews, FAQs)
-Phase 5: Compute co_purchased edges at DB level (see below)
+Phase 5: Compute also_bought edges (derived from co-purchase patterns)
 ```
 
-### Co-purchased edges (computed in SurrealDB, not in CSV)
+### Also-bought edges (derived in seed script)
 
 Two signals to detect products frequently bought together:
 
-**Signal A — same order:** if product X and Y appear in the same order, they're co-purchased.
-```sql
--- Find all product pairs within the same order
-LET $pairs = SELECT order_id, product_id FROM orders GROUP BY order_id;
--- For each order with 2+ products, RELATE them:
-RELATE product:X -> co_purchased -> product:Y SET weight += 1;
-```
+**Signal A — same customer across orders:** if the same customer bought X in one order and Y in another, they're co-purchased. The seed script (`schema/seed.py`) computes all pairwise co-purchase edges with weights.
 
-**Signal B — same customer across orders:** if the same customer bought X in one order and Y in another.
 ```sql
--- Find all products per customer
-SELECT customer_id, array::distinct(product_id) AS products
-FROM orders GROUP BY customer_id;
--- For each customer with 2+ distinct products, RELATE them:
-RELATE product:X -> co_purchased -> product:Y SET weight += 1;
+-- Conceptual SurrealQL (actual computation done in Python seed script)
+RELATE product:X -> also_bought -> product:Y SET weight = $count;
 ```
-
-Only keep edges with weight >= 2 to filter noise.
 
 ## Scripts
 
 - `python trim_dataset.py` — Regenerate trimmed/ from raw Olist (needs Customer_behaviour/)
 - `python remap_products.py` — Remap trimmed products to THG verticals (run after trim)
+- `python scrape_products.py` — Scrape products from lookfantastic.com (Phase 1: crawl brand pages, Phase 2: parse product pages)
+- `python reprocess_phase2.py` — Re-parse already-scraped product pages with fixed logic (no re-crawl)
+- `python apply_scraped_v2.py` — Round-robin remap products.csv with scraped data (Strategy B)
 - `python check_schema.py` — Verify schemas, sample data, and cross-dataset integrity

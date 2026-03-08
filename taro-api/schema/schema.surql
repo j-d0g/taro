@@ -51,6 +51,7 @@ DEFINE FIELD avg_rating ON product TYPE option<float>;
 DEFINE FIELD description ON product TYPE option<string>;
 DEFINE FIELD weight_g ON product TYPE option<float>;
 DEFINE FIELD image_url ON product TYPE option<string>;
+DEFINE FIELD product_url ON product TYPE option<string>;
 DEFINE FIELD created_at ON product TYPE datetime DEFAULT time::now();
 
 -- ============================================================

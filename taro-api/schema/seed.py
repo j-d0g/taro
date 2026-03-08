@@ -169,7 +169,7 @@ async def seed():
                     f"CREATE product:`{pid}` SET "
                     "name = $name, vertical = $vertical, subcategory = $subcat, "
                     "price = $price, avg_rating = $rating, description = $desc, "
-                    "weight_g = $weight, image_url = $image_url",
+                    "weight_g = $weight, image_url = $image_url, product_url = $product_url",
                     {
                         "name": row["product_name"],
                         "vertical": row.get("vertical") or None,
@@ -179,6 +179,7 @@ async def seed():
                         "desc": row.get("description") or None,
                         "weight": safe_float(row.get("weight_g", "")),
                         "image_url": row.get("image_url") or None,
+                        "product_url": row.get("product_url") or None,
                     },
                 )
                 # product -belongs_to-> subcategory
