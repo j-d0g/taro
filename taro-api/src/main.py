@@ -365,6 +365,29 @@ async def chat_stream(request: ChatRequest):
                         new_ids = _collect_product_ids_from_text(output, seen_product_ids)
                         collected_product_ids.extend(new_ids)
 
+                elif kind == "on_chat_model_end":
+                    # Extract reasoning summaries from models that support it
+                    message = data.get("output")
+                    if message:
+                        # GPT-5.x: reasoning in content_blocks
+                        content_blocks = getattr(message, "content_blocks", None)
+                        if content_blocks:
+                            for block in content_blocks:
+                                if isinstance(block, dict) and block.get("type") == "reasoning":
+                                    text = block.get("reasoning", "")
+                                    if isinstance(text, list):
+                                        text = " ".join(
+                                            s.get("text", "") for s in text
+                                            if isinstance(s, dict)
+                                        )
+                                    if text:
+                                        yield _sse("thinking", {"content": text})
+                        # Claude: reasoning in additional_kwargs
+                        elif hasattr(message, "additional_kwargs"):
+                            reasoning = message.additional_kwargs.get("reasoning_content")
+                            if reasoning:
+                                yield _sse("thinking", {"content": str(reasoning)})
+
                 elif kind == "on_chat_model_stream":
                     chunk = data.get("chunk")
                     if chunk is None:

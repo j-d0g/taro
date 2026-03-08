@@ -1077,6 +1077,17 @@ body {
   animation: fadeIn 0.3s ease;
 }
 
+.agent-thinking {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #8b6914;
+  background: rgba(180, 150, 50, 0.07);
+  border-left: 2px solid rgba(180, 150, 50, 0.3);
+  border-radius: var(--radius-sm);
+  margin: 4px 0;
+  animation: fadeIn 0.3s ease;
+}
+
 /* ── Typing indicator ─────────────────────────────── */
 .typing-indicator {
   display: flex;

@@ -1,4 +1,12 @@
-"""LangGraph ReAct agent with SurrealDB checkpointer."""
+"""LangGraph parent StateGraph: ReAct agent subgraph → judge node.
+
+The parent graph has two visible nodes in LangSmith/Studio:
+  1. "agent" — the full ReAct tool-calling subgraph (create_react_agent)
+  2. "judge" — evaluates tool selection quality (observational, no message mutation)
+
+Only the parent graph gets a checkpointer; the ReAct subgraph runs without one
+so that LangSmith shows the complete topology including the judge.
+"""
 
 import os
 import sys
@@ -9,10 +17,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import create_react_agent
 from loguru import logger
 
 from db import get_db_config
+from judge import evaluate_turn
 from prompts.system import load_prompt
 from tools import ALL_TOOLS
 
@@ -42,7 +52,13 @@ def get_llm(provider: str = DEFAULT_PROVIDER, model: str = DEFAULT_MODEL, temper
     provider = provider.lower()
 
     if provider == "openai":
-        return ChatOpenAI(model=model, temperature=temperature)
+        # Enable reasoning summaries for models that support it (GPT-5.x)
+        reasoning_effort = os.getenv("REASONING_EFFORT", "low")
+        return ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            reasoning_effort=reasoning_effort,
+        )
 
     if provider == "anthropic":
         if ChatAnthropic is None:
@@ -57,8 +73,19 @@ def get_llm(provider: str = DEFAULT_PROVIDER, model: str = DEFAULT_MODEL, temper
     raise ValueError(f"Unsupported LLM provider: {provider}. Use 'openai', 'anthropic', or 'google'.")
 
 
+async def judge_node(state: MessagesState) -> dict:
+    """Evaluate the agent's tool selection after the turn completes.
+
+    Observational only — returns empty messages so the conversation state
+    is not modified. The verdict is persisted to SurrealDB by evaluate_turn.
+    """
+    messages = state["messages"]
+    await evaluate_turn(messages)
+    return {"messages": []}
+
+
 def build_graph(model_provider: str = None, model_name: str = None, temperature: float = None, prompt: str = None, use_checkpointer: bool = True):
-    """Build the ReAct agent graph with optional checkpointer.
+    """Build a parent StateGraph with agent (ReAct subgraph) → judge nodes.
 
     When use_checkpointer=False, LangGraph Studio provides its own persistence.
     """
@@ -85,15 +112,25 @@ def build_graph(model_provider: str = None, model_name: str = None, temperature:
     else:
         checkpointer = None
 
-    agent = create_react_agent(
+    # ReAct subgraph — no checkpointer (parent owns persistence)
+    react_agent = create_react_agent(
         model=llm,
         tools=ALL_TOOLS,
         prompt=prompt or load_prompt(),
-        checkpointer=checkpointer,
     )
 
-    logger.info(f"Built ReAct agent with {len(ALL_TOOLS)} tools (checkpointer={'enabled' if use_checkpointer else 'platform-managed'})")
-    return agent
+    # Parent graph: agent → judge
+    workflow = StateGraph(MessagesState)
+    workflow.add_node("agent", react_agent)
+    workflow.add_node("judge", judge_node)
+    workflow.add_edge(START, "agent")
+    workflow.add_edge("agent", "judge")
+    workflow.add_edge("judge", END)
+
+    compiled = workflow.compile(checkpointer=checkpointer)
+
+    logger.info(f"Built parent graph (agent → judge) with {len(ALL_TOOLS)} tools (checkpointer={'enabled' if use_checkpointer else 'platform-managed'})")
+    return compiled
 
 
 # Detect if running under LangGraph Studio (it sets LANGGRAPH_API_URL or similar env vars)

@@ -14,10 +14,20 @@ function toggleCopilot() {
   document.body.classList.toggle('copilot-active', copilotMode);
   localStorage.setItem('copilotMode', copilotMode);
   document.getElementById('chatExpand').innerHTML = copilotMode ? '&#8646;' : '&#8644;';
+  if (copilotMode) {
+    // Auto-open panel when entering copilot mode (bubble is hidden)
+    chatOpen = true;
+    document.getElementById('chatPanel').classList.add('open');
+  }
 }
 
 if (copilotMode) {
   document.body.classList.add('copilot-active');
+  // Auto-open chat panel in copilot mode (bubble is hidden)
+  chatOpen = true;
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('chatPanel').classList.add('open');
+  });
 }
 
 function escapeHtml(text) {
@@ -314,6 +324,15 @@ function createStreamingMessage() {
       if (spinner) spinner.outerHTML = `<span class="tool-duration">${durationMs}ms</span>`;
     },
 
+    addThinking(content) {
+      const el = document.createElement('div');
+      el.className = 'agent-thinking';
+      el.innerHTML = '&#129504; <em>' + escapeHtml(content) + '</em>';
+      traceDiv.style.display = '';
+      traceDiv.appendChild(el);
+      container.scrollTop = container.scrollHeight;
+    },
+
     addProducts(products) {
       if (!products || products.length === 0) return;
       const cardsHtml = renderChatProductCards(products);
@@ -322,6 +341,16 @@ function createStreamingMessage() {
         div.innerHTML = cardsHtml;
         msgDiv.appendChild(div.firstElementChild);
       }
+    },
+
+    showLearn(insight) {
+      const learnDiv = document.createElement('div');
+      learnDiv.className = 'self-improve';
+      learnDiv.innerHTML = '&#129504; ' + escapeHtml(insight);
+      msgDiv.appendChild(learnDiv);
+      container.scrollTop = container.scrollHeight;
+      learnedCount++;
+      document.getElementById('learnedCount').textContent = learnedCount;
     },
 
     finalize() {
@@ -358,6 +387,12 @@ async function sendMessage() {
             break;
           case 'tool_end':
             stream.completeToolEnd(data.id, data.duration_ms || 0);
+            break;
+          case 'thinking':
+            stream.addThinking(data.content || '');
+            break;
+          case 'learn':
+            stream.showLearn(data.insight || 'Pattern captured');
             break;
           case 'done':
             queryCount += (data.tool_calls || []).length;
