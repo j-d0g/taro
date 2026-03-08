@@ -33,8 +33,13 @@ PATTERNS = {
 async def graph_traverse(start_id: str, pattern: str) -> str:
     """[ACT] Traverse the product/customer graph to find relationships.
 
-    Use high-level patterns instead of raw edges. Each pattern runs the
-    optimal multi-hop graph query and returns human-readable results.
+    This is the PRIMARY tool for relationship queries — prefer it over `find` or `grep`
+    when the user asks about connections between entities.
+
+    Best for: "what do people also buy", "related products", "ingredients in X",
+    "products for [goal]", "order history", "similar items", "complementary products".
+
+    Do NOT use `find` for these queries — use graph_traverse instead.
 
     PATTERNS (use these exact names):
     - "also_bought": Products frequently bought together with start product
@@ -45,11 +50,13 @@ async def graph_traverse(start_id: str, pattern: str) -> str:
 
     Examples:
         graph_traverse("product:hydrating_cream", "also_bought")
+        graph_traverse("product:niacinamide_serum", "ingredients")
         graph_traverse("customer:charlotte_gong", "customer_history")
         graph_traverse("goal:clear_skin", "goal_products")
 
     Args:
-        start_id: Starting record ID (e.g. 'product:impact_whey', 'customer:abc', 'goal:clear_skin').
+        start_id: Starting record ID (e.g. 'product:abc123', 'customer:charlotte_gong', 'goal:clear_skin').
+                  Get IDs from grep/find results or cat output.
         pattern: One of: also_bought, ingredients, similar, customer_history, goal_products.
     """
     logger.info(f"graph_traverse: {start_id} pattern={pattern}")

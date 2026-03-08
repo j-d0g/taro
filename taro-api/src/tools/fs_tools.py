@@ -322,6 +322,28 @@ async def _handle_show_product(db, product_id, verbose=False):
             cat_id = str(cats[0].get("id", "")).replace("category:", "")
             cat_name = cats[0].get("name", "?")
             lines.append(f"\nCategory: {cat_name} → /categories/{cat_id}/")
+
+        # Graph edge counts — breadcrumbs to encourage graph_traverse
+        edge_counts = await db.query(
+            f"SELECT "
+            f"count(->also_bought->product) AS also_bought, "
+            f"count(->contains_ingredient->ingredient) AS ingredients, "
+            f"count(->supports_goal->goal) AS goals, "
+            f"count(->related_to->product) AS related_to "
+            f"FROM {pid}"
+        )
+        if edge_counts:
+            ec = edge_counts[0] if isinstance(edge_counts[0], dict) else {}
+            parts = []
+            for label, key in [("also_bought", "also_bought"), ("ingredients", "ingredients"),
+                               ("goals", "goals"), ("related_to", "related_to")]:
+                count = ec.get(key, 0)
+                if count:
+                    parts.append(f"{label}({count})")
+            if parts:
+                lines.append(f"\nGraph edges: {', '.join(parts)}")
+                lines.append("  → Use graph_traverse to explore these connections")
+
         return "\n".join(lines)
 
 
@@ -680,10 +702,13 @@ async def grep(query: str, scope: str = "") -> str:
 async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
     """[ACT] Semantic + keyword hybrid search using vector embeddings and BM25. Like bash `find`.
 
-    Use in the ACT phase as the primary search tool. Combines meaning-based vector
-    search with exact keyword matching via Reciprocal Rank Fusion (RRF).
+    Use in the ACT phase for discovering NEW products by concept or description.
+    Combines meaning-based vector search with exact keyword matching via RRF.
 
     Best for: product recommendations, conceptual queries, "find something for X".
+
+    Do NOT use for: relationship queries (co-purchases, ingredients, categories, reviews, goals).
+    For those, use `graph_traverse` instead — it follows actual graph edges in the database.
 
     Args:
         query: Natural language search query (e.g. "vegan protein for muscle gain").
