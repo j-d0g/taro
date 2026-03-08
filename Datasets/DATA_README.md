@@ -13,6 +13,7 @@ Datasets/
 ├── reprocess_phase2.py     # Re-process scraped pages with fixed parsing (Phase 2 only)
 ├── apply_scraped_v2.py     # Strategy B: round-robin remap products with scraped data
 ├── remap_categories.py     # Remap products to real 3-vertical, 9-subcategory structure
+├── generate_orders.py      # Generate synthetic orders for richer purchase graph
 ├── check_schema.py         # Schema + integrity checker (reusable)
 └── DATA_README.md          # This file
 ```
@@ -30,8 +31,8 @@ Products remapped from 64 generic Olist categories into 3 verticals with 9 subca
 |---|---|---|
 | customers.csv | 2,526 | customer_id, customer_name, customer_city, customer_state |
 | products.csv | 1,890 | product_id, product_name, vertical, subcategory, price, avg_rating, description, weight_g, image_url, product_url |
-| orders.csv | 2,912 | order_id, customer_id, product_id, price |
-| reviews.csv | 2,515 | review_id, order_id, review_score, review_comment_message, sentiment |
+| orders.csv | 6,862 | order_id, customer_id, product_id, price |
+| reviews.csv | 6,465 | review_id, order_id, review_score, review_comment_message, sentiment |
 
 **Join keys:**
 - `customer_id` links customers <-> orders
@@ -102,4 +103,5 @@ RELATE product:X -> also_bought -> product:Y SET weight = $count;
 - `python scrape_products.py` — Scrape products from lookfantastic.com (Phase 1: crawl brand pages, Phase 2: parse product pages)
 - `python reprocess_phase2.py` — Re-parse already-scraped product pages with fixed logic (no re-crawl)
 - `python apply_scraped_v2.py` — Round-robin remap products.csv with scraped data (Strategy B)
+- `python generate_orders.py` — Generate synthetic orders for richer purchase graph (seed=42)
 - `python check_schema.py` — Verify schemas, sample data, and cross-dataset integrity
