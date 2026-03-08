@@ -43,7 +43,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "config", ".env"))
 
 # Default LLM settings
 DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
-DEFAULT_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+DEFAULT_MODEL = os.getenv("LLM_MODEL", "gpt-5.4")
 DEFAULT_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
 
 

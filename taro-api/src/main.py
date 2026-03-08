@@ -66,7 +66,7 @@ class PreferenceRequest(BaseModel):
 
 
 AVAILABLE_MODELS = {
-    "openai": {"default_model": "gpt-4o", "models": ["gpt-5.4", "gpt-5.2", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"]},
+    "openai": {"default_model": "gpt-5.4", "models": ["gpt-5.4", "gpt-5.2", "gpt-4.1", "gpt-4.1-mini"]},
     "anthropic": {"default_model": "claude-sonnet-4-20250514", "models": ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"]},
     "google": {"default_model": "gemini-2.0-flash", "models": ["gemini-2.0-flash", "gemini-2.5-pro-preview-06-05"]},
 }
@@ -404,8 +404,31 @@ async def chat_stream(request: ChatRequest):
                     content = getattr(chunk, "content", "")
                     tool_chunks = getattr(chunk, "tool_call_chunks", [])
 
-                    # Text content = either thinking (intermediate) or final response token
-                    if content and not tool_chunks:
+                    if not content or tool_chunks:
+                        continue
+
+                    # Responses API: content is a list of content blocks
+                    if isinstance(content, list):
+                        for block in content:
+                            if not isinstance(block, dict):
+                                continue
+                            btype = block.get("type", "")
+                            if btype == "reasoning":
+                                # Reasoning block — extract summary text
+                                summaries = block.get("summary", [])
+                                if summaries:
+                                    text = " ".join(
+                                        s.get("text", "") for s in summaries
+                                        if isinstance(s, dict) and s.get("text")
+                                    )
+                                    if text:
+                                        yield _sse("thinking", {"content": text})
+                            elif btype == "text":
+                                text = block.get("text", "")
+                                if text:
+                                    yield _sse("token", {"content": text})
+                    # Chat Completions API: content is a plain string
+                    elif isinstance(content, str):
                         yield _sse("token", {"content": content})
 
             # Fetch structured product data for all collected IDs

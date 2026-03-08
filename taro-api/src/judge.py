@@ -14,7 +14,7 @@ from loguru import logger
 
 from db import get_db
 
-JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gpt-4o-mini")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gpt-5.4")
 
 TOOLS_AVAILABLE = [
     "ls", "cat", "find", "grep", "graph_traverse",
@@ -113,7 +113,7 @@ async def evaluate_turn(messages: list) -> dict | None:
         return None
 
     try:
-        llm = ChatOpenAI(model=JUDGE_MODEL, temperature=0)
+        llm = ChatOpenAI(model=JUDGE_MODEL, temperature=0, reasoning_effort="low")
         prompt = JUDGE_PROMPT.format(
             tools=", ".join(TOOLS_AVAILABLE),
             query=turn["query"],
