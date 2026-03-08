@@ -6,6 +6,18 @@ let chatOpen = false;
 let threadId = crypto.randomUUID();
 let queryCount = 0;
 let learnedCount = 0;
+let copilotMode = localStorage.getItem('copilotMode') === 'true';
+
+function toggleCopilot() {
+  copilotMode = !copilotMode;
+  document.body.classList.toggle('copilot-active', copilotMode);
+  localStorage.setItem('copilotMode', copilotMode);
+  document.getElementById('chatExpand').innerHTML = copilotMode ? '&#8646;' : '&#8644;';
+}
+
+if (copilotMode) {
+  document.body.classList.add('copilot-active');
+}
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -59,25 +71,67 @@ function renderChatProductCards(products) {
     const rating = p.avg_rating || 0;
     const stars = '\u2605'.repeat(Math.round(rating)) + '\u2606'.repeat(5 - Math.round(rating));
     return `
-      <div class="chat-product-card" onclick="openProductDetail('${p.id}')">
-        <div class="chat-product-img">
-          ${p.image_url
-            ? `<img src="${p.image_url}" alt="${escapeHtml(p.name)}"
-                 onerror="this.parentElement.innerHTML='&#128722;'" />`
-            : '&#128722;'}
-        </div>
-        <div class="chat-product-info">
-          <div class="chat-product-name">${escapeHtml(p.name)}</div>
-          <div class="chat-product-meta">
-            <span class="chat-product-price">\u00a3${(p.price || 0).toFixed(2)}</span>
-            <span class="chat-product-rating"><span style="color:var(--warning)">${stars}</span> ${rating.toFixed(1)}</span>
+      <div class="chat-product-card" id="chat-product-${p.id}" data-product-id="${p.id}">
+        <div class="chat-product-main" onclick="openProductDetail('${p.id}')">
+          <div class="chat-product-img">
+            ${p.image_url
+              ? `<img src="${p.image_url}" alt="${escapeHtml(p.name)}"
+                   onerror="this.parentElement.innerHTML='&#128722;'" />`
+              : '&#128722;'}
           </div>
+          <div class="chat-product-info">
+            <div class="chat-product-name">${escapeHtml(p.name)}</div>
+            <div class="chat-product-meta">
+              <span class="chat-product-price">\u00a3${(p.price || 0).toFixed(2)}</span>
+              <span class="chat-product-rating"><span style="color:var(--warning)">${stars}</span> ${rating.toFixed(1)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="chat-product-actions">
+          <button class="pref-btn pref-cart" title="Add to cart" onclick="handlePreference('${p.id}', 'cart', this)">
+            &#128722;
+          </button>
+          <button class="pref-btn pref-keep" title="Save for later" onclick="handlePreference('${p.id}', 'keep', this)">
+            &#128278;
+          </button>
+          <button class="pref-btn pref-remove" title="Not interested" onclick="handlePreference('${p.id}', 'remove', this)">
+            &#10005;
+          </button>
         </div>
       </div>
     `;
   }).join('');
 
   return `<div class="chat-product-cards">${cards}</div>`;
+}
+
+async function handlePreference(productId, action, btnEl) {
+  const card = document.getElementById(`chat-product-${productId}`);
+  if (!card) return;
+
+  // Visual feedback immediately
+  if (action === 'cart') {
+    card.classList.add('pref-carted');
+    btnEl.innerHTML = '&#10003;';
+  } else if (action === 'keep') {
+    card.classList.add('pref-saved');
+    btnEl.innerHTML = '&#10003;';
+  } else if (action === 'remove') {
+    card.classList.add('pref-removed');
+    setTimeout(() => card.style.display = 'none', 300);
+  }
+
+  // Disable all action buttons on this card
+  card.querySelectorAll('.pref-btn').forEach(b => b.disabled = true);
+
+  // Send to backend
+  const result = await sendPreference(productId, action);
+  if (!result || !result.success) {
+    // Revert on failure
+    card.className = 'chat-product-card';
+    card.style.display = '';
+    card.querySelectorAll('.pref-btn').forEach(b => b.disabled = false);
+  }
 }
 
 // ── Add message to chat ────────────────────────────────
@@ -113,27 +167,42 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
     }
   }
 
-  // Tool trace cards (SurrealDB multi-model visualization)
+  // Tool trace cards (collapsed by default, click to expand)
   if (toolCalls.length > 0) {
     const iconMap = {
-      vector:  '&#128269;',
-      graph:   '&#128760;',
-      bm25:    '&#128196;',
+      vector: '&#128269;',
+      graph: '&#128760;',
+      bm25: '&#128196;',
       relational: '&#9881;',
+      web: '&#127760;',
+    };
+    const labelMap = {
+      ls: 'Browse', cat: 'Read', find: 'Semantic search',
+      grep: 'Keyword search', tree: 'Hierarchy', explore_schema: 'Schema',
+      graph_traverse: 'Graph traversal', surrealql_query: 'SQL query',
+      web_search: 'Web search',
     };
 
     const traceDiv = document.createElement('div');
     traceDiv.className = 'tool-trace';
-    traceDiv.innerHTML = toolCalls.map(tc => `
-      <div class="tool-card" onclick="this.classList.toggle('expanded')">
-        <div class="tool-card-header">
-          <span class="tool-icon ${tc.type}">${iconMap[tc.type] || '&#9881;'}</span>
-          ${tc.name}
-          <span class="tool-label ${tc.type}">${tc.type}</span>
-        </div>
-        <div class="tool-card-detail">${escapeHtml(tc.args)}</div>
+    const summary = toolCalls.map(tc => labelMap[tc.name] || tc.name).join(', ');
+    traceDiv.innerHTML = `
+      <div class="tool-trace-summary" onclick="this.parentElement.classList.toggle('expanded')">
+        &#9881; ${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}: ${summary}
       </div>
-    `).join('');
+      <div class="tool-trace-details">
+        ${toolCalls.map(tc => `
+          <div class="tool-card">
+            <div class="tool-card-header">
+              <span class="tool-icon ${tc.type}">${iconMap[tc.type] || '&#9881;'}</span>
+              ${labelMap[tc.name] || tc.name}
+              <span class="tool-label ${tc.type}">${tc.type}</span>
+            </div>
+            <div class="tool-card-detail"><pre>${escapeHtml(tc.args)}</pre></div>
+          </div>
+        `).join('')}
+      </div>
+    `;
     msgDiv.appendChild(traceDiv);
   }
 

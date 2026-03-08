@@ -129,7 +129,7 @@ DEFINE FIELD description ON ingredient TYPE option<string>;
 DEFINE FIELD common_in ON ingredient TYPE option<array<string>>; -- product types it appears in
 
 -- ============================================================
--- Graph edges (9 total)
+-- Graph edges (12 total)
 -- ============================================================
 
 -- customer -placed-> order
@@ -161,6 +161,19 @@ DEFINE FIELD concentration ON contains_ingredient TYPE option<string>; -- "activ
 -- product -related_to-> product (cross-reference: similar/complementary)
 DEFINE TABLE related_to SCHEMAFULL TYPE RELATION IN product OUT product;
 DEFINE FIELD reason ON related_to TYPE option<string>;       -- "same category", "complementary", "alternative"
+
+-- customer -wants-> product (added to cart)
+DEFINE TABLE wants SCHEMAFULL TYPE RELATION IN customer OUT product;
+DEFINE FIELD added_at ON wants TYPE datetime DEFAULT time::now();
+
+-- customer -interested_in-> product (saved for later)
+DEFINE TABLE interested_in SCHEMAFULL TYPE RELATION IN customer OUT product;
+DEFINE FIELD added_at ON interested_in TYPE datetime DEFAULT time::now();
+
+-- customer -rejected-> product (not interested)
+DEFINE TABLE rejected SCHEMAFULL TYPE RELATION IN customer OUT product;
+DEFINE FIELD reason ON rejected TYPE option<string>;
+DEFINE FIELD added_at ON rejected TYPE datetime DEFAULT time::now();
 
 -- ============================================================
 -- Web cache (for Tavily results)

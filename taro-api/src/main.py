@@ -58,6 +58,13 @@ class DistillResponse(BaseModel):
     updated: bool
 
 
+class PreferenceRequest(BaseModel):
+    user_id: str
+    product_id: str
+    action: str  # "cart", "keep", "remove"
+    reason: Optional[str] = None
+
+
 AVAILABLE_MODELS = {
     "openai": {"default_model": "gpt-4o", "models": ["gpt-5.4", "gpt-5.2", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"]},
     "anthropic": {"default_model": "claude-sonnet-4-20250514", "models": ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"]},
@@ -751,6 +758,72 @@ async def get_customer_recommendations(customer_id: str):
         # Return top 10 by rating
         sorted_recs = sorted(recs.values(), key=lambda x: x.get("avg_rating", 0) or 0, reverse=True)
         return sorted_recs[:10]
+
+
+# ── Preference endpoints ──────────────────────────────────
+
+
+@app.post("/preferences")
+async def set_preference(request: PreferenceRequest):
+    """Record a user's preference for a product (cart/keep/remove)."""
+    edge_map = {
+        "cart": "wants",
+        "keep": "interested_in",
+        "remove": "rejected",
+    }
+    edge_type = edge_map.get(request.action)
+    if not edge_type:
+        return {"error": f"Invalid action: {request.action}. Use cart, keep, or remove.", "success": False}
+
+    async with get_db() as db:
+        # Remove any existing preference edges for this user-product pair
+        for et in edge_map.values():
+            await db.query(
+                f"DELETE {et} WHERE in = customer:`{request.user_id}` AND out = product:`{request.product_id}`"
+            )
+
+        # Create the new edge
+        if request.action == "remove" and request.reason:
+            await db.query(
+                f"RELATE customer:`{request.user_id}`->{edge_type}->product:`{request.product_id}` "
+                f"SET reason = $reason, added_at = time::now()",
+                {"reason": request.reason},
+            )
+        else:
+            await db.query(
+                f"RELATE customer:`{request.user_id}`->{edge_type}->product:`{request.product_id}` "
+                f"SET added_at = time::now()"
+            )
+
+    logger.info(f"Preference: {request.user_id} -> {request.action} -> {request.product_id}")
+    return {"action": request.action, "product_id": request.product_id, "success": True}
+
+
+@app.get("/preferences/{user_id}")
+async def get_preferences(user_id: str):
+    """Get a user's product preferences (cart, saved, rejected)."""
+    async with get_db() as db:
+        cart = await db.query(
+            f"SELECT ->wants->product.{{id, name, price, image_url}} AS products FROM customer:`{user_id}`"
+        )
+        saved = await db.query(
+            f"SELECT ->interested_in->product.{{id, name, price, image_url}} AS products FROM customer:`{user_id}`"
+        )
+        rejected = await db.query(
+            f"SELECT ->rejected->product.{{id, name, price}} AS products FROM customer:`{user_id}`"
+        )
+
+        def extract(result):
+            items = result[0].get("products", []) if result else []
+            for item in items:
+                item["id"] = _str_id(item.get("id", ""))
+            return items
+
+        return {
+            "cart": extract(cart),
+            "saved": extract(saved),
+            "rejected": extract(rejected),
+        }
 
 
 # ── Category endpoints ──────────────────────────────────────
