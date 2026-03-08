@@ -54,7 +54,7 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
           ${tc.name}
           <span class="tool-label ${tc.type}">${tc.type}</span>
         </div>
-        <div class="tool-card-detail">${tc.args}</div>
+        <div class="tool-card-detail">${escapeHtml(tc.args)}</div>
       </div>
     `).join('');
     msgDiv.appendChild(traceDiv);
@@ -70,7 +70,7 @@ function addMessage(role, content, toolCalls = [], learnMsg = null, graphIdx = n
   if (learnMsg) {
     const learnDiv = document.createElement('div');
     learnDiv.className = 'self-improve';
-    learnDiv.innerHTML = `&#129504; Agent learned: ${learnMsg}`;
+    learnDiv.innerHTML = '&#129504; Agent learned: ' + escapeHtml(learnMsg);
     msgDiv.appendChild(learnDiv);
   }
 
@@ -130,7 +130,7 @@ async function sendMessage() {
     const gIdx = graphResponseIdx % (typeof MOCK_GRAPHS !== 'undefined' ? MOCK_GRAPHS.length : 1);
     graphResponseIdx++;
 
-    addMessage('agent', formatMarkdown(resp.reply), resp.tool_calls || [], resp.learn, gIdx);
+    addMessage('agent', resp.reply, resp.tool_calls || [], resp.learn, gIdx);
 
     // Show unread dot if chat is closed
     if (!chatOpen) {
@@ -138,15 +138,17 @@ async function sendMessage() {
     }
   } catch (err) {
     removeTyping();
-    addMessage('agent', `Connection error: ${err.message}. Is the API running at ${API_BASE}?`);
+    addMessage('agent', 'Connection error: ' + err.message + '. Is the API running at ' + API_BASE + '?');
   }
 }
 
 // ── Markdown-lite formatter ────────────────────────────
 
 function formatMarkdown(text) {
-  return text
+  return escapeHtml(text)
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
     .replace(/\n/g, '<br>');
 }
 
