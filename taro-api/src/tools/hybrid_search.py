@@ -87,8 +87,8 @@ async def hybrid_search(query: str, doc_type: str = "", limit: int = 5) -> str:
             vec_result = await db.query(vec_surql, params)
             bm25_result = await db.query(bm25_surql, params)
 
-            vec_docs = vec_result[0].get("result", []) if vec_result else []
-            bm25_docs = bm25_result[0].get("result", []) if bm25_result else []
+            vec_docs = vec_result or []
+            bm25_docs = bm25_result or []
 
             # Fuse with Reciprocal Rank Fusion
             fused = _rrf_fuse(vec_docs, bm25_docs)[:limit]

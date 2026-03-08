@@ -38,7 +38,7 @@ async def semantic_search(query: str, doc_type: str = "", limit: int = 5) -> str
                 ORDER BY score DESC
             """
             result = await db.query(surql, params)
-            docs = result[0].get("result", []) if result else []
+            docs = result or []
 
             if not docs:
                 return f"No semantic results for: '{query}'"

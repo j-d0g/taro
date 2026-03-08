@@ -83,7 +83,7 @@ async def _handle_root(db, verbose=False):
 
 async def _handle_list_users(db, verbose=False):
     result = await db.query("SELECT id, name, profile_type, experience_level FROM user")
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return "No users found."
     lines = [f"{'Users' if not verbose else 'All users'} ({len(rows)}):"]
@@ -98,7 +98,7 @@ async def _handle_list_users(db, verbose=False):
 
 async def _handle_show_user(db, user_id, verbose=False):
     result = await db.query(f"SELECT * FROM user:{user_id}")
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return f"User not found: {user_id}"
     u = rows[0]
@@ -135,8 +135,7 @@ async def _handle_show_user(db, user_id, verbose=False):
         orders_result = await db.query(
             f"SELECT ->placed_by->order.* AS orders FROM user:{user_id}"
         )
-        order_rows = orders_result[0].get("result", []) if orders_result else []
-        orders = order_rows[0].get("orders", []) if order_rows else []
+        orders = orders_result[0].get("orders", []) if orders_result else []
         if orders:
             lines.append(f"\nOrders ({len(orders)}):")
             for o in orders:
@@ -151,8 +150,7 @@ async def _handle_show_user(db, user_id, verbose=False):
                 prods_result = await db.query(
                     f"SELECT ->contains->product.{{id, name}} AS products FROM {oid_str}"
                 )
-                prod_rows = prods_result[0].get("result", []) if prods_result else []
-                prods = prod_rows[0].get("products", []) if prod_rows else []
+                prods = prods_result[0].get("products", []) if prods_result else []
                 for p in prods:
                     pid = str(p.get("id", ""))
                     pname = p.get("name", "?")
@@ -168,8 +166,7 @@ async def _handle_list_user_orders(db, user_id, verbose=False):
     result = await db.query(
         f"SELECT ->placed_by->order.* AS orders FROM user:{user_id}"
     )
-    rows = result[0].get("result", []) if result else []
-    orders = rows[0].get("orders", []) if rows else []
+    orders = result[0].get("orders", []) if result else []
     if not orders:
         return f"No orders found for user:{user_id}"
 
@@ -185,8 +182,7 @@ async def _handle_list_user_orders(db, user_id, verbose=False):
         prods_result = await db.query(
             f"SELECT ->contains->product.{{id, name, price}} AS products FROM {oid}"
         )
-        prod_rows = prods_result[0].get("result", []) if prods_result else []
-        prods = prod_rows[0].get("products", []) if prod_rows else []
+        prods = prods_result[0].get("products", []) if prods_result else []
         for p in prods:
             pid = str(p.get("id", "")).replace("product:", "")
             pname = p.get("name", "?")
@@ -199,7 +195,7 @@ async def _handle_list_products(db, verbose=False):
     result = await db.query(
         "SELECT id, name, category, price, dietary_tags FROM product LIMIT 50"
     )
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return "No products found."
     lines = [f"Products ({len(rows)}):"]
@@ -216,7 +212,7 @@ async def _handle_list_products(db, verbose=False):
 
 async def _handle_show_product(db, product_id, verbose=False):
     result = await db.query(f"SELECT * FROM product:{product_id}")
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return f"Product not found: {product_id}"
     p = rows[0]
@@ -240,8 +236,7 @@ async def _handle_show_product(db, product_id, verbose=False):
         related_result = await db.query(
             f"SELECT ->related_to->product.id AS related FROM {pid}"
         )
-        rel_rows = related_result[0].get("result", []) if related_result else []
-        related_ids = rel_rows[0].get("related", []) if rel_rows else []
+        related_ids = related_result[0].get("related", []) if related_result else []
         if related_ids:
             lines.append("\nRelated:")
             for rid in related_ids[:5]:
@@ -251,8 +246,7 @@ async def _handle_show_product(db, product_id, verbose=False):
         cat_result = await db.query(
             f"SELECT ->belongs_to->category.id AS cats FROM {pid}"
         )
-        cat_rows = cat_result[0].get("result", []) if cat_result else []
-        cats = cat_rows[0].get("cats", []) if cat_rows else []
+        cats = cat_result[0].get("cats", []) if cat_result else []
         if cats:
             cat_id = str(cats[0]).replace("category:", "")
             lines.append(f"  /categories/{cat_id}/")
@@ -272,8 +266,7 @@ async def _handle_show_product(db, product_id, verbose=False):
         related_result = await db.query(
             f"SELECT ->related_to->product.{{id, name, price}} AS related FROM {pid}"
         )
-        rel_rows = related_result[0].get("result", []) if related_result else []
-        related = rel_rows[0].get("related", []) if rel_rows else []
+        related = related_result[0].get("related", []) if related_result else []
         if related:
             lines.append("\nRelated products:")
             for r in related:
@@ -286,8 +279,7 @@ async def _handle_show_product(db, product_id, verbose=False):
         cat_result = await db.query(
             f"SELECT ->belongs_to->category.{{id, name}} AS cats FROM {pid}"
         )
-        cat_rows = cat_result[0].get("result", []) if cat_result else []
-        cats = cat_rows[0].get("cats", []) if cat_rows else []
+        cats = cat_result[0].get("cats", []) if cat_result else []
         if cats:
             cat_id = str(cats[0].get("id", "")).replace("category:", "")
             cat_name = cats[0].get("name", "?")
@@ -297,7 +289,7 @@ async def _handle_show_product(db, product_id, verbose=False):
 
 async def _handle_list_categories(db, verbose=False):
     result = await db.query("SELECT id, name, description FROM category")
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return "No categories found."
     lines = [f"Categories ({len(rows)}):"]
@@ -314,7 +306,7 @@ async def _handle_list_categories(db, verbose=False):
 async def _handle_show_category(db, category_id, verbose=False):
     # Get category info
     cat_result = await db.query(f"SELECT * FROM category:{category_id}")
-    cat_rows = cat_result[0].get("result", []) if cat_result else []
+    cat_rows = cat_result or []
     if not cat_rows:
         return f"Category not found: {category_id}"
     c = cat_rows[0]
@@ -324,8 +316,7 @@ async def _handle_show_category(db, category_id, verbose=False):
     result = await db.query(
         f"SELECT <-belongs_to<-product.{{id, name, price, dietary_tags}} AS products FROM category:{category_id}"
     )
-    rows = result[0].get("result", []) if result else []
-    products = rows[0].get("products", []) if rows else []
+    products = result[0].get("products", []) if result else []
 
     lines = [f"Category: {cname} ({len(products)} products)"]
     if c.get("description"):
@@ -343,8 +334,7 @@ async def _handle_show_category(db, category_id, verbose=False):
     sub_result = await db.query(
         f"SELECT <-child_of<-category.{{id, name}} AS children FROM category:{category_id}"
     )
-    sub_rows = sub_result[0].get("result", []) if sub_result else []
-    children = sub_rows[0].get("children", []) if sub_rows else []
+    children = sub_result[0].get("children", []) if sub_result else []
     if children:
         lines.append("\nSubcategories:")
         for ch in children:
@@ -356,7 +346,7 @@ async def _handle_show_category(db, category_id, verbose=False):
 
 async def _handle_list_goals(db, verbose=False):
     result = await db.query("SELECT id, name, description FROM goal")
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return "No goals found."
     lines = [f"Goals ({len(rows)}):"]
@@ -372,7 +362,7 @@ async def _handle_list_goals(db, verbose=False):
 
 async def _handle_show_goal(db, goal_id, verbose=False):
     goal_result = await db.query(f"SELECT * FROM goal:{goal_id}")
-    goal_rows = goal_result[0].get("result", []) if goal_result else []
+    goal_rows = goal_result or []
     if not goal_rows:
         return f"Goal not found: {goal_id}"
     g = goal_rows[0]
@@ -381,8 +371,7 @@ async def _handle_show_goal(db, goal_id, verbose=False):
     result = await db.query(
         f"SELECT <-supports_goal<-product.{{id, name, price, dietary_tags}} AS products FROM goal:{goal_id}"
     )
-    rows = result[0].get("result", []) if result else []
-    products = rows[0].get("products", []) if rows else []
+    products = result[0].get("products", []) if result else []
 
     lines = [f"Goal: {gname} ({len(products)} products)"]
     if g.get("description"):
@@ -400,7 +389,7 @@ async def _handle_show_goal(db, goal_id, verbose=False):
 
 async def _handle_list_ingredients(db, verbose=False):
     result = await db.query("SELECT id, name, category, description FROM ingredient")
-    rows = result[0].get("result", []) if result else []
+    rows = result or []
     if not rows:
         return "No ingredients found."
     lines = [f"Ingredients ({len(rows)}):"]
@@ -417,7 +406,7 @@ async def _handle_list_ingredients(db, verbose=False):
 
 async def _handle_show_ingredient(db, ingredient_id, verbose=False):
     ing_result = await db.query(f"SELECT * FROM ingredient:{ingredient_id}")
-    ing_rows = ing_result[0].get("result", []) if ing_result else []
+    ing_rows = ing_result or []
     if not ing_rows:
         return f"Ingredient not found: {ingredient_id}"
     ing = ing_rows[0]
@@ -426,8 +415,7 @@ async def _handle_show_ingredient(db, ingredient_id, verbose=False):
     result = await db.query(
         f"SELECT <-contains_ingredient<-product.{{id, name, price, dietary_tags}} AS products FROM ingredient:{ingredient_id}"
     )
-    rows = result[0].get("result", []) if result else []
-    products = rows[0].get("products", []) if rows else []
+    products = result[0].get("products", []) if result else []
 
     lines = [f"Ingredient: {iname} ({len(products)} products)"]
     if ing.get("description"):
@@ -576,7 +564,7 @@ async def grep(query: str, scope: str = "") -> str:
                     LIMIT 10
                 """
                 result = await db.query(surql, {"query": query})
-                docs = result[0].get("result", []) if result else []
+                docs = result or []
                 if not docs:
                     return f"No results for '{query}' in {scope or 'all documents'}"
                 lines = [f"grep '{query}' {scope or '/'} ({len(docs)} matches):"]
@@ -595,7 +583,7 @@ async def grep(query: str, scope: str = "") -> str:
             elif scope == "/users":
                 surql = "SELECT id, name, profile_type, experience_level FROM user WHERE name ~ $query"
                 result = await db.query(surql, {"query": query})
-                rows = result[0].get("result", []) if result else []
+                rows = result or []
                 if not rows:
                     return f"No users matching '{query}'"
                 lines = [f"grep '{query}' /users ({len(rows)} matches):"]
@@ -610,7 +598,7 @@ async def grep(query: str, scope: str = "") -> str:
             elif scope == "/categories":
                 surql = "SELECT id, name, description FROM category WHERE name ~ $query"
                 result = await db.query(surql, {"query": query})
-                rows = result[0].get("result", []) if result else []
+                rows = result or []
                 if not rows:
                     return f"No categories matching '{query}'"
                 lines = [f"grep '{query}' /categories ({len(rows)} matches):"]
@@ -674,8 +662,8 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
             vec_result = await db.query(vec_surql, params)
             bm25_result = await db.query(bm25_surql, params)
 
-            vec_docs = vec_result[0].get("result", []) if vec_result else []
-            bm25_docs = bm25_result[0].get("result", []) if bm25_result else []
+            vec_docs = vec_result or []
+            bm25_docs = bm25_result or []
 
             fused = _rrf_fuse(vec_docs, bm25_docs)[:limit]
 
@@ -720,8 +708,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         counts = {}
         for table in ("user", "product", "category", "goal", "ingredient"):
             result = await db.query(f"SELECT count() AS c FROM {table} GROUP ALL")
-            rows = result[0].get("result", []) if result else []
-            counts[table] = rows[0].get("c", 0) if rows else 0
+            counts[table] = result[0].get("c", 0) if result else 0
         return [
             (f"users/ ({counts['user']})", "/users", True),
             (f"products/ ({counts['product']} items — use ls /products/)", "/products", False),
@@ -732,7 +719,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
 
     if path == "/users":
         result = await db.query("SELECT id, name, profile_type FROM user")
-        rows = result[0].get("result", []) if result else []
+        rows = result or []
         return [
             (
                 f"{str(u['id']).replace('user:', '')}  {u.get('name', '?')} ({u.get('profile_type', '')})",
@@ -748,8 +735,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             f"SELECT count() AS c FROM order WHERE <-placed_by<-user CONTAINS user:{uid} GROUP ALL"
         )
-        rows = result[0].get("result", []) if result else []
-        count = rows[0].get("c", 0) if rows else 0
+        count = result[0].get("c", 0) if result else 0
         return [(f"orders/ ({count})", f"/users/{uid}/orders", True)]
 
     m = re.match(r"^/users/([^/]+)/orders$", path)
@@ -758,8 +744,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             f"SELECT ->placed_by->order.{{id, order_date, total, status}} AS orders FROM user:{uid}"
         )
-        rows = result[0].get("result", []) if result else []
-        orders = rows[0].get("orders", []) if rows else []
+        orders = result[0].get("orders", []) if result else []
         children = []
         for o in orders:
             oid = str(o.get("id", ""))
@@ -775,8 +760,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             f"SELECT ->contains->product.{{id, name, price}} AS products FROM {oid}"
         )
-        rows = result[0].get("result", []) if result else []
-        prods = rows[0].get("products", []) if rows else []
+        prods = result[0].get("products", []) if result else []
         return [
             (
                 f"{str(p['id']).replace('product:', '')}  {p.get('name', '?')} — £{p.get('price', 0):.2f}",
@@ -791,7 +775,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             "SELECT id, name FROM category WHERE id NOT IN (SELECT in FROM child_of)"
         )
-        rows = result[0].get("result", []) if result else []
+        rows = result or []
         children = []
         for c in rows:
             cid = str(c.get("id", "")).replace("category:", "")
@@ -807,8 +791,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         sub_result = await db.query(
             f"SELECT <-child_of<-category.{{id, name}} AS children FROM category:{cid}"
         )
-        sub_rows = sub_result[0].get("result", []) if sub_result else []
-        subs = sub_rows[0].get("children", []) if sub_rows else []
+        subs = sub_result[0].get("children", []) if sub_result else []
         for s in subs:
             sid = str(s.get("id", "")).replace("category:", "")
             sname = s.get("name", "?")
@@ -817,8 +800,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         prod_result = await db.query(
             f"SELECT <-belongs_to<-product.{{id, name, price, dietary_tags}} AS products FROM category:{cid}"
         )
-        prod_rows = prod_result[0].get("result", []) if prod_result else []
-        prods = prod_rows[0].get("products", []) if prod_rows else []
+        prods = prod_result[0].get("products", []) if prod_result else []
         for p in prods:
             pid = str(p.get("id", "")).replace("product:", "")
             pname = p.get("name", "?")
@@ -830,7 +812,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
 
     if path == "/goals":
         result = await db.query("SELECT id, name FROM goal")
-        rows = result[0].get("result", []) if result else []
+        rows = result or []
         return [
             (
                 f"{str(g['id']).replace('goal:', '')}/  {g.get('name', '?')}",
@@ -846,8 +828,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             f"SELECT <-supports_goal<-product.{{id, name, price, dietary_tags}} AS products FROM goal:{gid}"
         )
-        rows = result[0].get("result", []) if result else []
-        prods = rows[0].get("products", []) if rows else []
+        prods = result[0].get("products", []) if result else []
         return [
             (
                 f"{str(p['id']).replace('product:', '')}  {p.get('name', '?')} — £{p.get('price', 0):.2f}"
@@ -860,7 +841,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
 
     if path == "/ingredients":
         result = await db.query("SELECT id, name, category FROM ingredient")
-        rows = result[0].get("result", []) if result else []
+        rows = result or []
         return [
             (
                 f"{str(i['id']).replace('ingredient:', '')}/  {i.get('name', '?')}"
@@ -877,8 +858,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             f"SELECT <-contains_ingredient<-product.{{id, name, price, dietary_tags}} AS products FROM ingredient:{iid}"
         )
-        rows = result[0].get("result", []) if result else []
-        prods = rows[0].get("products", []) if rows else []
+        prods = result[0].get("products", []) if result else []
         return [
             (
                 f"{str(p['id']).replace('product:', '')}  {p.get('name', '?')} — £{p.get('price', 0):.2f}"
@@ -896,8 +876,7 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         result = await db.query(
             f"SELECT ->related_to->product.{{id, name}} AS related FROM product:{pid}"
         )
-        rows = result[0].get("result", []) if result else []
-        related = rows[0].get("related", []) if rows else []
+        related = result[0].get("related", []) if result else []
         return [
             (
                 f"→ see: {str(r['id']).replace('product:', '')}  {r.get('name', '?')}",
