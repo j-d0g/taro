@@ -12,7 +12,7 @@ from db import get_db
 
 @tool
 async def web_search(query: str) -> str:
-    """Search the web for current information using Tavily, scoped to myprotein.com.
+    """Search the web for current information using Tavily, scoped to lookfantastic.com.
 
     Use as a FALLBACK when SurrealDB tools return no results, or for:
     - Current promotions/deals
@@ -42,7 +42,7 @@ async def web_search(query: str) -> str:
             # Call Tavily
             tavily = TavilySearch(
                 max_results=5,
-                include_domains=["myprotein.com"],
+                include_domains=["lookfantastic.com"],
             )
             response = await tavily.ainvoke({"query": query})
 

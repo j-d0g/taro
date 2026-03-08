@@ -1210,6 +1210,70 @@ body {
   border: 1px solid var(--border-light);
 }
 
+/* Profile tags (goals, brands, dietary, etc.) */
+.profile-about { margin-bottom: 24px; }
+
+.profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  text-transform: capitalize;
+}
+
+.profile-tag-type { background: var(--gold-bg); color: var(--gold-hover); }
+.profile-tag-level { background: rgba(130, 100, 180, 0.1); color: #7B5EA7; }
+.profile-tag-skin { background: rgba(74, 157, 91, 0.1); color: var(--success); }
+.profile-tag-goal { background: rgba(59, 130, 246, 0.1); color: #3B82F6; }
+.profile-tag-diet { background: rgba(239, 68, 68, 0.08); color: #EF4444; }
+.profile-tag-brand { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border-light); }
+
+.profile-context {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+/* Agent memory items */
+.profile-memory { margin-bottom: 24px; }
+
+.profile-memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-memory-item {
+  font-size: 12px;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  position: relative;
+  padding-left: 24px;
+}
+
+.profile-memory-item::before {
+  content: '\2022';
+  position: absolute;
+  left: 10px;
+  color: var(--gold);
+  font-weight: bold;
+}
+
 /* Purchase history cards */
 .profile-purchases {
   display: flex;

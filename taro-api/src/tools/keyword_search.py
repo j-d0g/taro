@@ -11,7 +11,7 @@ async def keyword_search(query: str, doc_type: str = "", limit: int = 5) -> str:
     """Search documents using BM25 keyword matching.
 
     Best for: exact product names, specific terms, known phrases, SKUs.
-    Examples: "Impact Whey Protein", "creatine", "Alpha Men Multivitamin".
+    Examples: "CeraVe Cleanser", "retinol serum", "Clinique Moisture Surge".
 
     Args:
         query: The search terms.

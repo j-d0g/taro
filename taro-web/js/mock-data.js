@@ -49,8 +49,16 @@ const MOCK_REVIEWS = {
 const MOCK_CUSTOMER = {
   id: "dfa8a1b5",  // dfa8a1b565b79938d84942f83d88a2f7
   name: "Diego Carvalho",
-  city: "forquilhinha",
-  state: "SC",
+  city: "Bristol",
+  state: "",
+  profile_type: "skincare newcomer",
+  experience_level: "beginner",
+  goals: ["clear skin", "hydration"],
+  dietary_restrictions: [],
+  preferred_brands: ["The Ordinary", "CeraVe", "Clinique"],
+  skin_type: "oily",
+  context: "University student getting into skincare for the first time. Has oily skin prone to breakouts. Looking for affordable, no-fuss products. Prefers science-backed brands. Budget-conscious but willing to invest in a good serum.",
+  memory: ["University student on a budget", "Prefers fragrance-free products", "Gets breakouts on forehead and chin", "Likes simple 3-step routines"],
   orders: [
     {order_id: "cc2999bc", price: 59.80, products: ["8d777214", "728cfef9"]},
   ],

@@ -21,6 +21,8 @@ async function renderProfile() {
   document.getElementById('profileName').textContent = 'Loading...';
   document.getElementById('profileLocation').textContent = '';
   document.getElementById('profileStats').innerHTML = '';
+  document.getElementById('profileAbout').innerHTML = '';
+  document.getElementById('profileMemory').innerHTML = '';
   document.getElementById('profilePurchases').innerHTML =
     '<div class="skeleton" style="width:100%;height:60px"></div>';
   document.getElementById('profileRecommendations').innerHTML = '';
@@ -57,6 +59,53 @@ async function renderProfile() {
       <div class="profile-stat-label">Total Spent</div>
     </div>
   `;
+
+  // About section — profile type, goals, brands, dietary, skin type
+  const aboutEl = document.getElementById('profileAbout');
+  const aboutParts = [];
+  if (customer.profile_type) {
+    aboutParts.push(`<span class="profile-tag profile-tag-type">${customer.profile_type}</span>`);
+  }
+  if (customer.experience_level) {
+    aboutParts.push(`<span class="profile-tag profile-tag-level">${customer.experience_level}</span>`);
+  }
+  if (customer.skin_type) {
+    aboutParts.push(`<span class="profile-tag profile-tag-skin">${customer.skin_type} skin</span>`);
+  }
+  (customer.goals || []).forEach(g => {
+    aboutParts.push(`<span class="profile-tag profile-tag-goal">${g}</span>`);
+  });
+  (customer.dietary_restrictions || []).forEach(d => {
+    aboutParts.push(`<span class="profile-tag profile-tag-diet">${d}</span>`);
+  });
+  (customer.preferred_brands || []).forEach(b => {
+    aboutParts.push(`<span class="profile-tag profile-tag-brand">${b}</span>`);
+  });
+
+  if (aboutParts.length > 0) {
+    aboutEl.innerHTML = `
+      <h3 class="profile-section-title">Profile</h3>
+      <div class="profile-tags">${aboutParts.join('')}</div>
+      ${customer.context ? `<p class="profile-context">${customer.context}</p>` : ''}
+    `;
+  } else {
+    aboutEl.innerHTML = '';
+  }
+
+  // Memory — key facts the agent has learned
+  const memoryEl = document.getElementById('profileMemory');
+  const memoryItems = customer.memory || [];
+  if (memoryItems.length > 0) {
+    memoryEl.innerHTML = `
+      <h3 class="profile-section-title">Agent Memory</h3>
+      <p class="profile-section-subtitle">Key facts for personalisation</p>
+      <div class="profile-memory-list">
+        ${memoryItems.map(m => `<div class="profile-memory-item">${m}</div>`).join('')}
+      </div>
+    `;
+  } else {
+    memoryEl.innerHTML = '';
+  }
 
   // Purchase history
   const purchasesEl = document.getElementById('profilePurchases');

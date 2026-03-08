@@ -12,7 +12,7 @@ async def semantic_search(query: str, doc_type: str = "", limit: int = 5) -> str
     """Search documents using vector similarity (semantic meaning).
 
     Best for: natural language questions, conceptual queries, "find similar" requests.
-    Examples: "something for muscle recovery", "supplements for energy", "healthy snack options".
+    Examples: "something for sensitive skin", "moisturizer for dryness", "hydrating serum".
 
     Args:
         query: Natural language search query.

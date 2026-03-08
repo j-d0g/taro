@@ -50,8 +50,8 @@ Returns a list of products, optionally filtered.
 {
   "id": "ce5b9184",
   "name": "Clinique Moisture Surge Hydration Set",
-  "vertical": "Fitness",
-  "subcategory": "Equipment",
+  "vertical": "Skincare",
+  "subcategory": "Moisturisers",
   "price": 32.02,
   "avg_rating": 5.0,
   "image_url": "https://...",
@@ -79,11 +79,11 @@ Notes:
 
 ### `GET /verticals`
 
-Returns list of vertical names: `["Beauty", "Fitness", "Wellness"]`
+Returns list of vertical names: `["Skincare", "Haircare", "Body & Fragrance"]`
 
 Maps to `category` records where `level = 'vertical'`.
 
-### `GET /subcategories?vertical=Fitness`
+### `GET /subcategories?vertical=Skincare`
 
 Returns subcategory names for a vertical: `["Equipment", "Tech", "Nutrition", ...]`
 
@@ -122,7 +122,7 @@ Returns recommended products via graph traversal:
 {
   "message": "string",
   "thread_id": "uuid",
-  "channel": "myprotein",
+  "channel": "lookfantastic",
   "model_provider": "openai",
   "model_name": "gpt-4o",
   "prompt_id": "default"
@@ -249,16 +249,16 @@ SELECT *, vector::similarity::cosine(embedding, $query_vec) AS score
   WHERE embedding <|5|> $query_vec;
 
 -- Category hierarchy: subcategories for a vertical
-SELECT <-child_of<-category.* FROM category:fitness;
+SELECT <-child_of<-category.* FROM category:skincare;
 ```
 
 ### Subcategories per Vertical
 
 | Vertical  | Subcategories                                                    |
 |-----------|------------------------------------------------------------------|
-| Fitness   | Equipment, Tech, Nutrition, Accessories, Drinks                  |
-| Beauty    | Skincare, Tools, Bath & Body, Fragrance, Body Care, Grooming     |
-| Wellness  | Mindfulness, Family Health, Home Wellness, Sleep, Gifts, Lifestyle|
+| Skincare        | Moisturisers, Cleansers, Serums, Tools, Sets, Eye Care, Sun Care |
+| Haircare        | Shampoo, Conditioner, Hair Treatments, Styling, Hair Tools       |
+| Body & Fragrance| Bath & Shower, Body Moisturisers, Fragrance, Deodorant, Hand & Nail|
 
 ---
 
@@ -268,7 +268,7 @@ SELECT <-child_of<-category.* FROM category:fitness;
 |-----------|-----------|---------------------------|
 | magenta   | `#ff00a0` | Primary accent, CTA       |
 | purple    | `#9600ff` | Secondary accent, graph   |
-| success   | `#00d4aa` | Fitness badge, BM25 tools |
+| success   | `#00d4aa` | Skincare badge, BM25 tools |
 | warning   | `#ffaa00` | Stars, relational tools   |
 | bg-deep   | `#0E0C14` | Page background           |
 | bg-card   | `#15131D` | Cards, navbar             |

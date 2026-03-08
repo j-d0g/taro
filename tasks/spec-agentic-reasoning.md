@@ -93,7 +93,7 @@ Internally this tool uses the LLM to decide which edges to follow at each hop.
 ## 3. Rich User Context — The Paper Trail
 
 ### What
-Every user should have a rich, evolving context that makes recommendations genuinely personal. Not just "goals: muscle building" but a full history.
+Every user should have a rich, evolving context that makes recommendations genuinely personal. Not just "goals: clear skin" but a full history.
 
 ### Schema Additions
 ```surql
@@ -206,7 +206,7 @@ The final recommendation shouldn't rely on a single `find` call. It should compo
 1. **User history**: what they've bought, tried, liked/disliked
 2. **Graph context**: related products, ingredient compatibility, goal alignment
 3. **Hybrid search**: vector + keyword search for candidates
-4. **Web search**: fill gaps with live product data from Tavily (lookfantastic.com, myprotein.com)
+4. **Web search**: fill gaps with live product data from Tavily (lookfantastic.com)
 5. **Filtering**: remove anything with ingredients the user reacted to
 
 ### Search Pipeline (per complex query)
@@ -225,7 +225,7 @@ The final recommendation shouldn't rely on a single `find` call. It should compo
 
 ### Web Search Enhancement
 Currently `web_search` is a last resort. It should be a first-class signal:
-- Domain-scope to lookfantastic.com, myprotein.com, theordinary.com
+- Domain-scope to lookfantastic.com
 - When SurrealDB has the product but no reviews: search for reviews online
 - When user asks about trends/new products: always include web results
 - Combine SurrealDB product data + web prices/availability for complete answer

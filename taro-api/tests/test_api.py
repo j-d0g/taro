@@ -88,19 +88,19 @@ def test_chat_request_shape(client):
     """Verify /chat accepts well-formed requests (agent is mocked)."""
     from langchain_core.messages import AIMessage
 
-    mock_result = {"messages": [AIMessage(content="Here are some protein options.")]}
+    mock_result = {"messages": [AIMessage(content="Here are some great moisturizers.")]}
 
     import main
     main._default_agent = AsyncMock()
     main._default_agent.ainvoke.return_value = mock_result
 
-    response = client.post("/chat", json={"message": "recommend a protein powder"})
+    response = client.post("/chat", json={"message": "recommend a moisturizer"})
     assert response.status_code == 200
     data = response.json()
     assert "reply" in data
     assert "thread_id" in data
     assert "tool_calls" in data
-    assert data["reply"] == "Here are some protein options."
+    assert data["reply"] == "Here are some great moisturizers."
 
 
 # ── Simple endpoint smoke tests ─────────────────────────
@@ -110,7 +110,7 @@ def test_products_endpoint(client):
     """Products endpoint returns list of products."""
     mock = _mock_db({
         "FROM product": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ],
     })
     import main
@@ -125,12 +125,12 @@ def test_products_search_param(client):
     """Products endpoint accepts search query param."""
     mock = _mock_db({
         "FROM product": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ],
     })
     import main
     with patch.object(main, "get_db", mock):
-        response = client.get("/products?search=protein")
+        response = client.get("/products?search=cleanser")
     assert response.status_code == 200
 
 
@@ -138,12 +138,12 @@ def test_products_vertical_param(client):
     """Products endpoint accepts vertical filter."""
     mock = _mock_db({
         "FROM product": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99, "vertical": "Fitness"},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50, "vertical": "Skincare"},
         ],
     })
     import main
     with patch.object(main, "get_db", mock):
-        response = client.get("/products?vertical=Fitness")
+        response = client.get("/products?vertical=Skincare")
     assert response.status_code == 200
 
 
@@ -187,7 +187,7 @@ def test_get_customer_orders(client):
             {"id": "order:o1", "total": 49.99, "status": "delivered", "order_date": "2025-01-15"},
         ]}],
         "contains": [{"products": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ]}],
     })
     import main
@@ -198,15 +198,15 @@ def test_get_customer_orders(client):
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["id"] == "o1"
-    assert data[0]["products"][0]["name"] == "Impact Whey"
+    assert data[0]["products"][0]["name"] == "CeraVe Cleanser"
 
 
 def test_get_customer_recommendations(client):
     """GET /customers/{id}/recommendations returns deduped recs."""
     mock = _mock_db({
-        "placed->order->contains": [{"bought": ["product:whey_1"]}],
+        "placed->order->contains": [{"bought": ["product:cleanser_1"]}],
         "also_bought": [{"recs": [
-            {"id": "product:creatine_1", "name": "Creatine Mono", "price": 14.99, "avg_rating": 4.8},
+            {"id": "product:serum_1", "name": "Retinol Serum", "price": 14.99, "avg_rating": 4.8},
         ]}],
     })
     import main
@@ -216,18 +216,18 @@ def test_get_customer_recommendations(client):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 1
-    assert data[0]["name"] == "Creatine Mono"
+    assert data[0]["name"] == "Retinol Serum"
 
 
 def test_list_categories(client):
     """GET /categories returns verticals with nested subcategories."""
     mock = _mock_db({
         "SELECT id, name, level": [
-            {"id": "category:fitness", "name": "Fitness", "level": "vertical", "description": "Fitness products"},
-            {"id": "category:fitness__protein", "name": "Protein", "level": "subcategory", "description": ""},
+            {"id": "category:skincare", "name": "Skincare", "level": "vertical", "description": "Skincare products"},
+            {"id": "category:skincare__serums", "name": "Serums", "level": "subcategory", "description": ""},
         ],
         "child_of": [
-            {"child": "category:fitness__protein", "parent": "category:fitness"},
+            {"child": "category:skincare__serums", "parent": "category:skincare"},
         ],
     })
     import main
@@ -237,30 +237,30 @@ def test_list_categories(client):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 1
-    assert data[0]["name"] == "Fitness"
+    assert data[0]["name"] == "Skincare"
     assert len(data[0]["subcategories"]) == 1
-    assert data[0]["subcategories"][0]["name"] == "Protein"
+    assert data[0]["subcategories"][0]["name"] == "Serums"
 
 
 def test_get_category(client):
     """GET /categories/{id} returns category with products."""
     mock = _mock_db({
         "SELECT * FROM category": [
-            {"id": "category:fitness", "name": "Fitness", "level": "vertical"},
+            {"id": "category:skincare", "name": "Skincare", "level": "vertical"},
         ],
         "belongs_to": [{"products": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ]}],
         "child_of": [{"subcategories": [
-            {"id": "category:fitness__protein", "name": "Protein"},
+            {"id": "category:skincare__serums", "name": "Serums"},
         ]}],
     })
     import main
     with patch.object(main, "get_db", mock):
-        response = client.get("/categories/fitness")
+        response = client.get("/categories/skincare")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "Fitness"
+    assert data["name"] == "Skincare"
     assert len(data["products"]) == 1
     assert len(data["subcategories"]) == 1
 
@@ -269,7 +269,7 @@ def test_list_goals(client):
     """GET /goals returns all goals."""
     mock = _mock_db({
         "SELECT id, name, description, vertical FROM goal": [
-            {"id": "goal:muscle_gain", "name": "Muscle Gain", "description": "Build muscle", "vertical": "Fitness"},
+            {"id": "goal:clear_skin", "name": "Clear Skin", "description": "Achieve clear complexion", "vertical": "Skincare"},
         ],
     })
     import main
@@ -278,28 +278,28 @@ def test_list_goals(client):
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
-    assert data[0]["name"] == "Muscle Gain"
-    assert data[0]["id"] == "muscle_gain"
+    assert data[0]["name"] == "Clear Skin"
+    assert data[0]["id"] == "clear_skin"
 
 
 def test_get_goal(client):
     """GET /goals/{id} returns goal with products."""
     mock = _mock_db({
         "SELECT * FROM goal": [
-            {"id": "goal:muscle_gain", "name": "Muscle Gain", "description": "Build muscle"},
+            {"id": "goal:clear_skin", "name": "Clear Skin", "description": "Achieve clear complexion"},
         ],
         "supports_goal": [{"products": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99, "avg_rating": 4.7},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50, "avg_rating": 4.7},
         ]}],
     })
     import main
     with patch.object(main, "get_db", mock):
-        response = client.get("/goals/muscle_gain")
+        response = client.get("/goals/clear_skin")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "Muscle Gain"
+    assert data["name"] == "Clear Skin"
     assert len(data["products"]) == 1
-    assert data["products"][0]["name"] == "Impact Whey"
+    assert data["products"][0]["name"] == "CeraVe Cleanser"
 
 
 def test_get_goal_not_found(client):
@@ -317,7 +317,7 @@ def test_products_pagination(client):
     """GET /products supports limit and offset params."""
     mock = _mock_db({
         "FROM product": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ],
     })
     import main
@@ -332,12 +332,12 @@ def test_products_brand_filter(client):
     """GET /products supports brand filter."""
     mock = _mock_db({
         "FROM product": [
-            {"id": "product:whey_1", "name": "Impact Whey", "price": 24.99, "brand": "Myprotein"},
+            {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50, "brand": "CeraVe"},
         ],
     })
     import main
     with patch.object(main, "get_db", mock):
-        response = client.get("/products?brand=Myprotein")
+        response = client.get("/products?brand=CeraVe")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)

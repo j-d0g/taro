@@ -125,14 +125,14 @@ def not_error(response: dict) -> bool:
 async def test_tool_selection(client: httpx.AsyncClient, suite: StressTestSuite):
     print("\n=== TOOL SELECTION TESTS ===")
     tests = [
-        ("recommend a protein powder", ["find"], "Product query -> find"),
-        ("something for muscle recovery", ["find", "grep"], "Conceptual query -> find or grep"),
-        ("Impact Whey Protein", ["grep", "find", "cat"], "Exact name -> grep or find"),
+        ("recommend a hydrating moisturizer", ["find"], "Product query -> find"),
+        ("something for sensitive skin", ["find", "grep"], "Conceptual query -> find or grep"),
+        ("Clinique Moisture Surge", ["grep", "find", "cat"], "Exact name -> grep or find"),
         ("what tables exist in the database?", ["explore_schema", "ls"], "Schema -> explore_schema or ls"),
-        ("how many products are in the Beauty category?", ["surrealql_query", "tree", "ls"], "Aggregation -> surrealql or tree"),
-        ("show me product:impact_whey", ["cat"], "Direct record -> cat"),
-        ("latest myprotein deals 2026", ["web_search"], "Current info -> web_search"),
-        ("what category is Impact Whey in?", ["find", "grep", "cat", "graph_traverse"], "Category -> search or traverse"),
+        ("how many products are in the Skincare category?", ["surrealql_query", "tree", "ls"], "Aggregation -> surrealql or tree"),
+        ("show me product:clinique_moisture_surge", ["cat"], "Direct record -> cat"),
+        ("latest lookfantastic deals 2026", ["web_search"], "Current info -> web_search"),
+        ("what category is CeraVe Cleanser in?", ["find", "grep", "cat", "graph_traverse"], "Category -> search or traverse"),
     ]
     for query, expected, desc in tests:
         print(f"  Testing: {desc}")
@@ -147,10 +147,10 @@ async def test_tool_selection(client: httpx.AsyncClient, suite: StressTestSuite)
 async def test_multi_hop(client: httpx.AsyncClient, suite: StressTestSuite):
     print("\n=== MULTI-HOP REASONING TESTS ===")
     tests = [
-        ("Find a protein powder and tell me what category it belongs to", "Search then category info", lambda r: has_any_tool(r, "find", "grep") and not_error(r)),
-        ("What products are related to Impact Whey Protein?", "Find product then related edges", lambda r: has_any_tool(r, "find", "grep", "graph_traverse") and not_error(r)),
-        ("Find the best-rated protein product and show me its full details", "Search then verify", lambda r: has_any_tool(r, "find", "grep") and not_error(r)),
-        ("Compare the top 3 protein powders by price and rating", "Search then multi-verify", lambda r: has_any_tool(r, "find", "grep") and not_error(r)),
+        ("Find a retinol serum and tell me what category it belongs to", "Search then category info", lambda r: has_any_tool(r, "find", "grep") and not_error(r)),
+        ("What products are related to Clinique Moisture Surge?", "Find product then related edges", lambda r: has_any_tool(r, "find", "grep", "graph_traverse") and not_error(r)),
+        ("Find the best-rated skincare product and show me its full details", "Search then verify", lambda r: has_any_tool(r, "find", "grep") and not_error(r)),
+        ("Compare the top 3 moisturizers by price and rating", "Search then multi-verify", lambda r: has_any_tool(r, "find", "grep") and not_error(r)),
     ]
     for query, desc, check_fn in tests:
         print(f"  Testing: {desc}")
@@ -166,11 +166,11 @@ async def test_edge_cases(client: httpx.AsyncClient, suite: StressTestSuite):
     tests = [
         ("", "Empty query", lambda r: not_error(r)),
         ("asdf123 gibberish qwerty", "Gibberish", lambda r: not_error(r)),
-        ("tell me about XYZ-QUANTUM-PROTEIN-9000", "Non-existent product",
+        ("tell me about XYZ-QUANTUM-SERUM-9000", "Non-existent product",
          lambda r: not_error(r) and any(w in r.get("reply", "").lower() for w in ["not found", "no", "couldn't", "don't", "unable", "doesn't exist"])),
         ("SELECT * FROM product; DROP TABLE product;", "SQL injection", lambda r: not_error(r)),
-        ("recommend a protein powder " * 30, "Very long query", lambda r: not_error(r)),
-        ("I want supplements for muscle gains", "Emoji-free conceptual", lambda r: used_tools(r) and not_error(r)),
+        ("recommend a moisturizer " * 30, "Very long query", lambda r: not_error(r)),
+        ("I want skincare for dry skin", "Emoji-free conceptual", lambda r: used_tools(r) and not_error(r)),
     ]
     for query, desc, check_fn in tests:
         print(f"  Testing: {desc}")
@@ -206,13 +206,13 @@ async def test_adversarial(client: httpx.AsyncClient, suite: StressTestSuite):
 async def test_graph_reasoning(client: httpx.AsyncClient, suite: StressTestSuite):
     print("\n=== GRAPH REASONING TESTS ===")
     tests = [
-        ("What products have customers also bought with Impact Whey?", "also_bought",
+        ("What products have customers also bought with Clinique Moisture Surge?", "also_bought",
          lambda r: used_tools(r) and not_error(r)),
-        ("Show me all subcategories under Fitness", "child_of hierarchy",
+        ("Show me all subcategories under Skincare", "child_of hierarchy",
          lambda r: used_tools(r) and not_error(r)),
         ("What ingredients are in The Ordinary Niacinamide?", "contains_ingredient",
          lambda r: used_tools(r) and not_error(r)),
-        ("What goals does creatine support?", "supports_goal",
+        ("What goals does retinol support?", "supports_goal",
          lambda r: used_tools(r) and not_error(r)),
         ("Show me Diego Carvalho's order history", "customer orders",
          lambda r: used_tools(r) and not_error(r)),
@@ -244,7 +244,7 @@ async def test_schema_awareness(client: httpx.AsyncClient, suite: StressTestSuit
 
 async def test_conversation(client: httpx.AsyncClient, suite: StressTestSuite):
     print("\n=== CONVERSATION CONTINUITY TESTS ===")
-    resp1 = await chat(client, "I'm looking for a protein powder for muscle building")
+    resp1 = await chat(client, "I'm looking for a hydrating moisturizer for dry skin")
     thread_id = resp1.get("thread_id", "")
     print(f"  Turn 1: thread={thread_id}, tools={tools_used(resp1)}")
     resp2 = await chat(client, "What about something cheaper?", thread_id=thread_id)

@@ -511,7 +511,7 @@ async def ls(path: str = "/") -> str:
       /products/{id} → Product summary + related products
       /categories/   → List all categories
       /categories/{id}/ → Products in a category
-      /goals/        → List all fitness/health goals
+      /goals/        → List all beauty/skincare goals
       /goals/{id}/   → Products supporting a goal
       /ingredients/  → List all key ingredients
       /ingredients/{id}/ → Products containing an ingredient

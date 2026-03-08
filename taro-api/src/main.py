@@ -32,7 +32,7 @@ class ChatRequest(BaseModel):
     message: str
     thread_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: Optional[str] = None  # e.g. "diego_carvalho" for personalized context
-    channel: str = "myprotein"
+    channel: str = "lookfantastic"
     model_provider: Optional[str] = None
     model_name: Optional[str] = None
     prompt_id: str = "default"
@@ -145,6 +145,15 @@ async def chat(request: ChatRequest):
                                 parts.append(f"Preferences: {prefs}")
                             if context:
                                 parts.append(f"Previous context: {context}")
+                            memory = user.get("memory", [])
+                            if memory:
+                                parts.append(f"Key facts: {'; '.join(memory)}")
+                            dietary = user.get("dietary_restrictions", [])
+                            if dietary:
+                                parts.append(f"Dietary: {', '.join(dietary)}")
+                            brands = user.get("preferred_brands", [])
+                            if brands:
+                                parts.append(f"Preferred brands: {', '.join(brands)}")
                             user_context = " | ".join(parts)
             except Exception as ue:
                 logger.warning(f"Failed to load user context: {ue}")

@@ -112,7 +112,7 @@ DEFINE FIELD level ON category TYPE string;                  -- "vertical" or "s
 DEFINE FIELD description ON category TYPE option<string>;
 
 -- ============================================================
--- Goal (fitness / wellness / beauty goals)
+-- Goal (beauty / skincare goals)
 -- ============================================================
 DEFINE TABLE goal SCHEMAFULL;
 
@@ -127,7 +127,7 @@ DEFINE TABLE ingredient SCHEMAFULL;
 
 DEFINE FIELD name ON ingredient TYPE string;
 DEFINE FIELD role ON ingredient TYPE option<string>;         -- "hydration", "anti-aging", "exfoliation"
-DEFINE FIELD category ON ingredient TYPE option<string>;     -- "skincare", "nutrition", "wellness"
+DEFINE FIELD category ON ingredient TYPE option<string>;     -- "skincare", "haircare", "body"
 DEFINE FIELD description ON ingredient TYPE option<string>;
 DEFINE FIELD common_in ON ingredient TYPE option<array<string>>; -- product types it appears in
 

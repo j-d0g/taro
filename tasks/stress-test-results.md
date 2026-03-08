@@ -7,14 +7,14 @@
 ## Results by Category
 
 ### Tool Selection: 8/18 (44%) - CRITICAL
-- PASS: "recommend a protein powder" -> hybrid_search, get_record x2
-- PASS: "something for muscle recovery" -> semantic_search, get_record x5
-- FAIL: "Impact Whey Protein" -> HTTP 500 (no tools)
+- PASS: "recommend a moisturizer" -> hybrid_search, get_record x2
+- PASS: "something for sensitive skin" -> semantic_search, get_record x5
+- FAIL: "Clinique Moisture Surge" -> HTTP 500 (no tools)
 - FAIL: "what tables exist?" -> HTTP 500 (no tools)
 - FAIL: "how many Beauty products?" -> HTTP 500 (no tools)
 - FAIL: "show me product:impact_whey" -> HTTP 500 (no tools)
-- PASS: "latest myprotein deals" -> web_search
-- FAIL: "what category is Impact Whey in?" -> HTTP 500 (no tools)
+- PASS: "latest lookfantastic deals" -> web_search
+- FAIL: "what category is CeraVe Cleanser in?" -> HTTP 500 (no tools)
 
 **Domain queries (10 tests)**:
 - FAIL x5: Skincare, anti-aging, hydration, marathon, budget queries -> HTTP 500

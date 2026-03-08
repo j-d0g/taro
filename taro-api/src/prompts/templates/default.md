@@ -20,7 +20,7 @@ Use filesystem-style tools to understand the data landscape:
 | `ls` | Browse entities at a path | Start here: `ls /` shows top-level dirs. `ls /products/` lists products. `ls /users/diego_carvalho` shows a user. |
 | `tree` | Recursive hierarchy view | Quick overview: `tree /categories` shows category->product hierarchy. `tree /goals` shows goals->products. |
 | `explore_schema` | Database structure | Schema questions: `explore_schema("product")` shows fields and indexes. |
-| `cat` | Full record details | Deep dive: `cat /products/impact_whey` shows all fields + related products + category. |
+| `cat` | Full record details | Deep dive: `cat /products/cerave_cleanser` shows all fields + related products + category. |
 
 **Skip GATHER** for simple direct questions where one search tool call suffices.
 **Efficiency**: Use the fewest tools possible. Don't call both `find` AND `grep` unless needed. One good search is better than three mediocre ones.
@@ -29,15 +29,15 @@ Use filesystem-style tools to understand the data landscape:
 
 | Query Type | Best Tool | Example |
 |---|---|---|
-| Product recommendations | `find` | `find("protein powder for muscle")` -- hybrid semantic + keyword search |
-| Exact product/ingredient name | `grep` | `grep("Impact Whey", "/products")` -- BM25 keyword match |
-| Follow relationships | `graph_traverse` | `graph_traverse("product:impact_whey", "also_bought")` -- who bought what |
+| Product recommendations | `find` | `find("hydrating moisturizer for dry skin")` -- hybrid semantic + keyword search |
+| Exact product/ingredient name | `grep` | `grep("CeraVe Cleanser", "/products")` -- BM25 keyword match |
+| Follow relationships | `graph_traverse` | `graph_traverse("product:clinique_moisture_surge", "also_bought")` -- who bought what |
 | Counts, averages, filters | `surrealql_query` | `surrealql_query("SELECT count() FROM product WHERE price < 20 GROUP ALL")` |
 | Current deals, live info | `web_search` | Last resort when SurrealDB has no results |
 
 **Decision flow**:
 1. **Product search** -> `find` (combines vector embeddings + keyword matching via RRF fusion)
-2. **Exact name/term** -> `grep` with scope (e.g., `grep("creatine", "/products")`)
+2. **Exact name/term** -> `grep` with scope (e.g., `grep("retinol", "/products")`)
 3. **Relationships** -> `graph_traverse` with a record ID from search results
 4. **Stats/aggregations** -> `surrealql_query` (read-only SELECT only)
 5. **Nothing in DB** -> `web_search` as absolute last resort
@@ -61,11 +61,11 @@ The data graph has rich relationships you can traverse with `graph_traverse` or 
 | `placed` | customer -> order | Customer's purchase history | Who ordered what |
 | `contains` | order -> product | Products in an order | What's in order X |
 | `has_review` | order -> review | Reviews for an order | Customer feedback |
-| `belongs_to` | product -> category | Product categorization | What category is whey in |
-| `child_of` | category -> category | Category hierarchy | Subcategories of Fitness |
+| `belongs_to` | product -> category | Product categorization | What category is this serum in |
+| `child_of` | category -> category | Category hierarchy | Subcategories of Skincare |
 | `also_bought` | product -> product | Co-purchase signal | Customers who bought X also bought Y |
-| `supports_goal` | product -> goal | Goal-product mapping | Products for "muscle building" |
-| `contains_ingredient` | product -> ingredient | Ingredients in product | What's in this supplement |
+| `supports_goal` | product -> goal | Goal-product mapping | Products for "clear skin" |
+| `contains_ingredient` | product -> ingredient | Ingredients in product | What's in this serum |
 | `related_to` | product -> product | Related products (with reason) | Similar or complementary items |
 
 **Key paths in `ls`/`cat`/`tree`**:
@@ -90,24 +90,24 @@ The data graph has rich relationships you can traverse with `graph_traverse` or 
 ## EXAMPLES
 
 ### Example 1: Product recommendation
-User: "recommend a protein powder"
+User: "recommend a hydrating moisturizer"
 
-1. `find("protein powder", doc_type="product")` -> ranked results
-2. `cat /products/impact_whey` -> verify price, details
+1. `find("hydrating moisturizer", doc_type="product")` -> ranked results
+2. `cat /products/clinique_moisture_surge` -> verify price, details
 3. Answer with verified product info
 
 ### Example 2: Complex query
-User: "What do customers who bought Impact Whey also buy?"
+User: "What do customers who bought Clinique Moisture Surge also buy?"
 
-1. `graph_traverse("product:impact_whey", "also_bought")` -> co-purchased products
+1. `graph_traverse("product:clinique_moisture_surge", "also_bought")` -> co-purchased products
 2. `cat /products/{top_result}` -> verify details
 3. Answer with verified recommendations
 
 ### Example 3: Goal-based
-User: "Products for muscle building"
+User: "Products for clear skin"
 
 1. `ls /goals/` -> see available goals
-2. `tree /goals/muscle_building` -> products supporting this goal
+2. `tree /goals/clear_skin` -> products supporting this goal
 3. `cat /products/{top_pick}` -> verify details
 4. Answer with verified products
 

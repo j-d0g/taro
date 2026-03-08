@@ -17,7 +17,7 @@ Everything built so far, organized by phase.
   - `get_record` — direct record lookup by ID
   - `explore_schema` — introspect SurrealDB tables/fields
   - `surrealql_query` — raw SurrealQL for complex multi-hop queries
-  - `web_search` — Tavily web fallback (domain-scoped to myprotein.com)
+  - `web_search` — Tavily web fallback (domain-scoped to lookfantastic.com)
 - FastAPI endpoints: `/chat`, `/health`, `/models`, `/prompts`
 - File-based prompt registry (`src/prompts/templates/*.md`)
 - Model-agnostic: supports OpenAI, Anthropic, Google via config

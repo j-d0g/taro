@@ -67,12 +67,12 @@ Then send requests:
 # Basic chat
 curl -X POST http://localhost:8000/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message": "recommend a protein powder"}'
+  -d '{"message": "recommend a hydrating moisturizer"}'
 
 # Multi-turn conversation (reuse thread_id)
 curl -X POST http://localhost:8000/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message": "which one is best for muscle building?", "thread_id": "THREAD_ID_FROM_ABOVE"}'
+  -d '{"message": "which one is best for sensitive skin?", "thread_id": "THREAD_ID_FROM_ABOVE"}'
 
 # Use a different model
 curl -X POST http://localhost:8000/chat \
@@ -82,7 +82,7 @@ curl -X POST http://localhost:8000/chat \
 # Use a different prompt persona
 curl -X POST http://localhost:8000/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message": "help me build muscle", "prompt_id": "coaching"}'
+  -d '{"message": "help me with my skincare routine", "prompt_id": "coaching"}'
 ```
 
 ### 3. API Docs (Swagger)
@@ -112,7 +112,7 @@ This is 10% of the hackathon judging criteria. Make sure `LANGSMITH_TRACING=true
 The frontend lives in `taro-web/` and is a **standalone vanilla HTML/CSS/JS** application with a lookfantastic-inspired editorial luxury design. No build step required -- just open `taro-web/index.html` in your browser.
 
 **Features:**
-- **Product grid** with vertical tabs (Fitness / Beauty / Wellness) and subcategory chip filters
+- **Product grid** with vertical tabs (Skincare / Haircare / Body & Fragrance) and subcategory chip filters
 - **Split-screen product detail modal** with star ratings, co-purchase recommendations, and reviews
 - **Customer profile panel** showing purchase history, graph-based recommendations, and spend stats
 - **Chat agent drawer** with tool trace cards that visualize SurrealDB multi-model search in real time
@@ -166,10 +166,10 @@ cd taro-api && make test
 
 ```json
 {
-  "reply": "Here are some great protein powders...",
+  "reply": "Here are some great moisturizers for you...",
   "thread_id": "user-123",
   "tool_calls": [
-    {"name": "hybrid_search", "args": {"query": "protein powder"}}
+    {"name": "hybrid_search", "args": {"query": "hydrating moisturizer"}}
   ]
 }
 ```
@@ -188,7 +188,7 @@ The agent decides which tool to use based on the query. This is the core of the 
 | `graph_traverse` | Walk RELATE edges | Categories, related products, hierarchies |
 | `get_record` | Direct ID lookup | Fetch full details of a known record |
 | `explore_schema` | DB introspection | Understanding available tables/fields |
-| `web_search` | Tavily (myprotein.com) | Current promos, fallback when DB is empty |
+| `web_search` | Tavily (lookfantastic.com) | Current promos, fallback when DB is empty |
 | `surrealql_query` | Raw read-only SurrealQL | Aggregations, complex filters, GROUP BY |
 
 ---
@@ -239,10 +239,10 @@ ALL_TOOLS = [..., my_tool]
 Drop a `.md` file into `src/prompts/templates/`:
 
 ```bash
-echo "You are a fitness coach." > src/prompts/templates/fitness.md
+echo "You are a skincare expert." > src/prompts/templates/skincare.md
 ```
 
-Immediately available via `"prompt_id": "fitness"` in chat requests.
+Immediately available via `"prompt_id": "skincare"` in chat requests.
 
 ### Add a new model provider
 
@@ -294,7 +294,7 @@ taro-api/
 - [LangGraph](https://github.com/langchain-ai/langgraph) -- ReAct agent orchestration
 - [SurrealDB](https://surrealdb.com) -- multi-model database (vector, BM25, graph, relational)
 - [FastAPI](https://fastapi.tiangolo.com) -- REST API
-- [Tavily](https://tavily.com) -- web search (domain-scoped to myprotein.com)
+- [Tavily](https://tavily.com) -- web search (domain-scoped to lookfantastic.com)
 - [LangSmith](https://smith.langchain.com) -- observability and tracing
 
 ---

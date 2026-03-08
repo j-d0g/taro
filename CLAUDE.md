@@ -87,7 +87,7 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 - Python 3.11+, FastAPI, LangGraph, LangChain
 - SurrealDB (vector HNSW + BM25 + graph RELATE + hybrid RRF)
 - OpenAI embeddings (text-embedding-3-small, 1536 dims) -- cached in `fs_tools.py` LRU
-- Tavily search (domain-scoped to myprotein.com)
+- Tavily search (domain-scoped to lookfantastic.com)
 - LangSmith for observability
 - `langgraph-checkpoint-surrealdb` for persistent state
 

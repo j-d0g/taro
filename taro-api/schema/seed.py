@@ -2,7 +2,7 @@
 
 Data sources:
 - Products, customers, orders, reviews: Datasets/trimmed/ CSVs (1,890 scraped products)
-- Goals, ingredients, user personas: schema/mock_data.py (curated enrichment)
+- Goals, ingredients: inline (curated beauty enrichment)
 - FAQs: Datasets/bitext_faq.csv (26K Q&A pairs, deduplicated by intent)
 
 Usage: python schema/seed.py
@@ -24,12 +24,34 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "config", ".env"))
 
 from db import get_db
 
-# Import enrichment data (goals, ingredients, user personas)
-sys.path.insert(0, os.path.dirname(__file__))
-from mock_data import (
-    GOALS,
-    INGREDIENTS,
-)
+# ── Beauty goals & ingredients (LookFantastic catalog) ─────────────
+
+GOALS = [
+    {"id": "clear_skin", "name": "Clear Skin", "description": "Achieve a clear, blemish-free complexion through targeted skincare", "vertical": "Skincare"},
+    {"id": "anti_aging", "name": "Anti-Aging", "description": "Reduce fine lines and wrinkles, maintain youthful skin", "vertical": "Skincare"},
+    {"id": "hydration", "name": "Hydration", "description": "Deep moisture for skin, hair, and body", "vertical": "Skincare"},
+    {"id": "hair_growth", "name": "Hair Growth", "description": "Support healthy hair growth and reduce thinning", "vertical": "Haircare"},
+    {"id": "brightening", "name": "Brightening", "description": "Even out skin tone and fade dark spots", "vertical": "Skincare"},
+    {"id": "sun_protection", "name": "Sun Protection", "description": "Shield skin from UV damage and prevent premature aging", "vertical": "Skincare"},
+]
+
+INGREDIENTS = [
+    {"id": "hyaluronic_acid", "name": "Hyaluronic Acid", "role": "hydration", "category": "skincare", "description": "Moisture-binding molecule that holds 1000x its weight in water", "common_in": ["serums", "moisturisers", "masks"]},
+    {"id": "retinol", "name": "Retinol", "role": "anti-aging", "category": "skincare", "description": "Vitamin A derivative that boosts cell turnover and collagen production", "common_in": ["serums", "night creams"]},
+    {"id": "niacinamide", "name": "Niacinamide", "role": "pore control", "category": "skincare", "description": "Vitamin B3 that minimises pores and evens skin tone", "common_in": ["serums", "moisturisers", "toners"]},
+    {"id": "salicylic_acid", "name": "Salicylic Acid", "role": "exfoliation", "category": "skincare", "description": "BHA that penetrates pores to clear breakouts", "common_in": ["cleansers", "toners", "spot treatments"]},
+    {"id": "vitamin_c", "name": "Vitamin C", "role": "brightening", "category": "skincare", "description": "Antioxidant that brightens skin and fades dark spots", "common_in": ["serums", "moisturisers"]},
+    {"id": "glycolic_acid", "name": "Glycolic Acid", "role": "exfoliation", "category": "skincare", "description": "AHA that resurfaces skin for a smoother texture", "common_in": ["toners", "peeling solutions", "masks"]},
+    {"id": "ceramides", "name": "Ceramides", "role": "barrier repair", "category": "skincare", "description": "Lipids that strengthen the skin barrier and lock in moisture", "common_in": ["moisturisers", "cleansers"]},
+    {"id": "squalane", "name": "Squalane", "role": "hydration", "category": "skincare", "description": "Lightweight oil that mimics skin's natural sebum", "common_in": ["oils", "moisturisers"]},
+    {"id": "spf", "name": "SPF Filters", "role": "sun protection", "category": "skincare", "description": "UV filters that protect skin from sun damage", "common_in": ["sunscreens", "moisturisers", "primers"]},
+    {"id": "peptides", "name": "Peptides", "role": "anti-aging", "category": "skincare", "description": "Short chains of amino acids that signal collagen production", "common_in": ["serums", "eye creams"]},
+    {"id": "caffeine", "name": "Caffeine", "role": "depuffing", "category": "skincare", "description": "Constricts blood vessels to reduce puffiness and dark circles", "common_in": ["eye creams", "serums"]},
+    {"id": "collagen", "name": "Collagen", "role": "firming", "category": "skincare", "description": "Structural protein supporting skin elasticity and firmness", "common_in": ["creams", "masks", "serums"]},
+    {"id": "biotin", "name": "Biotin", "role": "hair and nail growth", "category": "haircare", "description": "B-vitamin that supports keratin production for healthy hair and nails", "common_in": ["hair treatments", "supplements"]},
+    {"id": "argan_oil", "name": "Argan Oil", "role": "nourishment", "category": "haircare", "description": "Rich in vitamin E and fatty acids for hair shine and softness", "common_in": ["hair oils", "conditioners", "masks"]},
+    {"id": "lavender", "name": "Lavender Oil", "role": "calming", "category": "body", "description": "Essential oil with calming and soothing properties", "common_in": ["bath products", "body lotions", "candles"]},
+]
 
 # ── CSV paths ──────────────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
