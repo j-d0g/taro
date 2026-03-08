@@ -128,37 +128,60 @@ async def chat(request: ChatRequest):
                     user_result = await db.query(
                         f"SELECT * FROM customer:{request.user_id}"
                     )
-                    if user_result:
-                        user = user_result[0] if isinstance(user_result[0], dict) and "id" in user_result[0] else (user_result[0].get("result", [{}])[0] if isinstance(user_result[0], dict) else {})
-                        if user:
-                            name = user.get("name", request.user_id)
-                            parts = [f"\n[User: {name} — customer:{request.user_id}]"]
-                            # Graph hint so agent can traverse
-                            parts.append(f"Graph entry: cat /users/{request.user_id} or graph_traverse('customer:{request.user_id}', 'placed')")
-                            # Profile fields
-                            if user.get("bio"):
-                                parts.append(f"Bio: {user['bio']}")
-                            if user.get("skin_type"):
-                                parts.append(f"Skin type: {user['skin_type']}")
-                            if user.get("hair_type"):
-                                parts.append(f"Hair type: {user['hair_type']}")
-                            if user.get("concerns"):
-                                parts.append(f"Concerns: {', '.join(user['concerns'])}")
-                            if user.get("allergies"):
-                                parts.append(f"Allergies: {', '.join(user['allergies'])}")
-                            if user.get("goals"):
-                                parts.append(f"Goals: {', '.join(user['goals'])}")
-                            if user.get("preferences"):
-                                parts.append(f"Preferences: {', '.join(user['preferences'])}")
-                            if user.get("preferred_brands"):
-                                parts.append(f"Preferred brands: {', '.join(user['preferred_brands'])}")
-                            if user.get("dietary_restrictions"):
-                                parts.append(f"Dietary: {', '.join(user['dietary_restrictions'])}")
-                            if user.get("context"):
-                                parts.append(f"Previous context: {user['context']}")
-                            if user.get("memory"):
-                                parts.append(f"Key facts: {'; '.join(user['memory'])}")
-                            user_context = " | ".join(parts)
+                    if user_result and isinstance(user_result[0], dict) and "id" in user_result[0]:
+                        user = user_result[0]
+                        name = user.get("name", request.user_id)
+                        parts = [f"\n[User: {name} — customer:{request.user_id}]"]
+
+                        # Profile fields
+                        profile_fields = {
+                            "bio": "Bio", "skin_type": "Skin type", "hair_type": "Hair type",
+                            "context": "Previous context",
+                        }
+                        list_fields = {
+                            "concerns": "Concerns", "allergies": "Allergies", "goals": "Goals",
+                            "preferences": "Preferences", "preferred_brands": "Preferred brands",
+                            "dietary_restrictions": "Dietary",
+                        }
+                        for field, label in profile_fields.items():
+                            if user.get(field):
+                                parts.append(f"{label}: {user[field]}")
+                        for field, label in list_fields.items():
+                            if user.get(field):
+                                parts.append(f"{label}: {', '.join(user[field])}")
+                        if user.get("memory"):
+                            parts.append(f"Key facts: {'; '.join(user['memory'])}")
+
+                        # Purchase history via graph traversal
+                        purchase_rows = await db.query(
+                            "SELECT ->placed->order->contains->product.{name, price, subcategory} "
+                            f"AS products FROM customer:{request.user_id}"
+                        )
+                        bought_products = purchase_rows[0].get("products", []) if purchase_rows else []
+                        if bought_products:
+                            purchase_summary = [f"{p['name']} (£{p.get('price', '?')})" for p in bought_products[:8]]
+                            parts.append(f"Recent purchases: {', '.join(purchase_summary)}")
+
+                        # Reviews via graph traversal
+                        review_rows = await db.query(
+                            "SELECT ->placed->order->has_review->review.{score, comment, sentiment} "
+                            f"AS reviews FROM customer:{request.user_id}"
+                        )
+                        reviews = review_rows[0].get("reviews", []) if review_rows else []
+                        if reviews:
+                            review_parts = []
+                            for r in reviews[:5]:
+                                score = r.get("score", "?")
+                                comment = r.get("comment", "")
+                                snippet = comment[:60] + "..." if len(comment) > 60 else comment
+                                sentiment = r.get("sentiment", "")
+                                review_parts.append(f"{score}/5 ({sentiment}): \"{snippet}\"")
+                            parts.append(f"Their reviews: {'; '.join(review_parts)}")
+
+                        # Graph hint for deeper exploration
+                        parts.append(f"Graph entry: cat /users/{request.user_id} or graph_traverse('customer:{request.user_id}', 'placed')")
+
+                        user_context = " | ".join(parts)
             except Exception as ue:
                 logger.warning(f"Failed to load user context: {ue}")
 
@@ -181,30 +204,57 @@ async def chat(request: ChatRequest):
                 for tc in msg.tool_calls:
                     tool_calls.append({"name": tc.get("name", ""), "args": tc.get("args", {})})
 
-        # Extract product data from tool result messages
+        # Extract product data from tool calls
+        # Strategy: collect product IDs from cat /products/{id} calls and
+        # source_id references in find/grep results, then fetch from DB
         products: list[dict] = []
-        seen_product_names: set[str] = set()
+        product_ids: list[str] = []
+        seen_ids: set[str] = set()
+
         for msg in messages:
+            # From cat tool calls: extract product ID from path argument
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    if tc.get("name") == "cat":
+                        path = tc.get("args", {}).get("path", "")
+                        if path.startswith("/products/"):
+                            pid = path.replace("/products/", "").strip("/")
+                            if pid and pid not in seen_ids:
+                                seen_ids.add(pid)
+                                product_ids.append(pid)
+
+            # From find/grep results: extract source_id references
             if msg.__class__.__name__ == "ToolMessage" and isinstance(msg.content, str):
-                try:
-                    data = json.loads(msg.content)
-                    items = data if isinstance(data, list) else [data]
-                    for item in items:
-                        if isinstance(item, dict) and "name" in item and "price" in item:
-                            pname = item["name"]
-                            if pname not in seen_product_names:
-                                seen_product_names.add(pname)
-                                products.append({
-                                    "id": _str_id(item.get("id", "")),
-                                    "name": pname,
-                                    "price": item.get("price"),
-                                    "avg_rating": item.get("avg_rating"),
-                                    "image_url": item.get("image_url", ""),
-                                    "vertical": item.get("vertical", ""),
-                                    "subcategory": item.get("subcategory", ""),
-                                })
-                except (json.JSONDecodeError, TypeError):
-                    pass
+                import re
+                for match in re.finditer(r'→ /products/([a-f0-9]+)', msg.content):
+                    pid = match.group(1)
+                    if pid not in seen_ids:
+                        seen_ids.add(pid)
+                        product_ids.append(pid)
+
+        # Fetch structured product data from DB
+        if product_ids:
+            try:
+                from db import get_db
+                async with get_db() as db:
+                    for pid in product_ids[:10]:  # Cap at 10
+                        result = await db.query(
+                            f"SELECT id, name, price, avg_rating, image_url, vertical, subcategory "
+                            f"FROM product:`{pid}`"
+                        )
+                        if result and isinstance(result[0], dict) and "name" in result[0]:
+                            p = result[0]
+                            products.append({
+                                "id": _str_id(p.get("id", "")),
+                                "name": p["name"],
+                                "price": p.get("price"),
+                                "avg_rating": p.get("avg_rating"),
+                                "image_url": p.get("image_url", ""),
+                                "vertical": p.get("vertical", ""),
+                                "subcategory": p.get("subcategory", ""),
+                            })
+            except Exception as prod_err:
+                logger.warning(f"Failed to fetch product details: {prod_err}")
 
         return ChatResponse(reply=reply, thread_id=request.thread_id, tool_calls=tool_calls, products=products)
     except Exception as e:

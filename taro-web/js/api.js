@@ -39,7 +39,12 @@ async function fetchProductDetail(productId) {
   try {
     const res = await fetch(`${API_BASE}/products/${productId}`);
     if (!res.ok) throw new Error(`API ${res.status}`);
-    return await res.json();
+    const data = await res.json();
+    if (data.error) {
+      console.warn('fetchProductDetail: product not found:', data.error);
+      throw new Error(data.error);
+    }
+    return data;
   } catch (err) {
     console.warn('fetchProductDetail: API unavailable, using mock data:', err.message);
     if (typeof MOCK_PRODUCTS === 'undefined') return null;
