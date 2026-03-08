@@ -72,8 +72,9 @@ async def hybrid_search(query: str, doc_type: str = "", limit: int = 5) -> str:
                 SELECT id, title, content, doc_type, source_id,
                        vector::similarity::cosine(embedding, $embedding) AS vec_score
                 FROM documents
-                WHERE embedding <|{fetch_limit}|> $embedding {type_filter}
+                WHERE embedding != NONE {type_filter}
                 ORDER BY vec_score DESC
+                LIMIT {fetch_limit}
             """
             bm25_surql = f"""
                 SELECT id, title, content, doc_type, source_id,
@@ -87,8 +88,8 @@ async def hybrid_search(query: str, doc_type: str = "", limit: int = 5) -> str:
             vec_result = await db.query(vec_surql, params)
             bm25_result = await db.query(bm25_surql, params)
 
-            vec_docs = vec_result[0].get("result", []) if vec_result else []
-            bm25_docs = bm25_result[0].get("result", []) if bm25_result else []
+            vec_docs = [d for d in (vec_result or []) if isinstance(d, dict)]
+            bm25_docs = [d for d in (bm25_result or []) if isinstance(d, dict)]
 
             # Fuse with Reciprocal Rank Fusion
             fused = _rrf_fuse(vec_docs, bm25_docs)[:limit]
