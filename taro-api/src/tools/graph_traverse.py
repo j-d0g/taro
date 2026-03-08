@@ -58,12 +58,13 @@ async def graph_traverse(
         async with get_db() as db:
             depth = min(depth, 3)  # Cap at 3 hops
 
+            # SurrealDB 3.0: use ->edge->? (wildcard) instead of ->edge->*
             if direction == "out":
-                arrow = "".join([f"->{edge_type}->" for _ in range(depth)])
+                arrow = "".join([f"->{edge_type}->?" for _ in range(depth)])
             else:
-                arrow = "".join([f"<-{edge_type}<-" for _ in range(depth)])
+                arrow = "".join([f"<-{edge_type}<-?" for _ in range(depth)])
 
-            surql = f"SELECT * FROM {start_id}{arrow}*"
+            surql = f"SELECT * FROM {start_id}{arrow}"
             result = await db.query(surql)
 
             # Handle both SurrealDB 3.0 result formats

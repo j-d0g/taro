@@ -611,7 +611,7 @@ async def grep(query: str, scope: str = "") -> str:
                 for doc in docs:
                     title = doc.get("title", "Untitled")
                     score = doc.get("score", 0)
-                    source = doc.get("source_id", "")
+                    source = str(doc.get("source_id", ""))
                     content = doc.get("content", "")[:150]
                     lines.append(f"\n  {title} (score: {score:.2f})")
                     if source:
@@ -747,7 +747,7 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
                 vec = doc.get("vec_score", 0)
                 bm25 = doc.get("bm25_score", 0)
                 dtype = doc.get("doc_type", "?")
-                source = doc.get("source_id", "")
+                source = str(doc.get("source_id", ""))
                 content = doc.get("content", "")[:200]
 
                 lines.append(f"\n  {title} (rrf: {rrf:.4f}, vec: {vec:.3f}, bm25: {bm25:.2f}, type: {dtype})")
