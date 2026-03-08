@@ -43,18 +43,26 @@ def test_import_all_tools():
     from tools import ALL_TOOLS
 
     assert isinstance(ALL_TOOLS, list)
-    assert len(ALL_TOOLS) == 8
+    assert len(ALL_TOOLS) == 13
 
     tool_names = [t.name for t in ALL_TOOLS]
     expected = [
+        # GATHER phase
+        "ls",
+        "cat",
+        "tree",
+        "explore_schema",
+        # ACT phase
+        "find",
         "hybrid_search",
         "semantic_search",
         "keyword_search",
+        "grep",
         "graph_traverse",
-        "get_record",
-        "explore_schema",
-        "web_search",
         "surrealql_query",
+        "web_search",
+        # VERIFY phase
+        "get_record",
     ]
     for name in expected:
         assert name in tool_names, f"Missing tool: {name}"

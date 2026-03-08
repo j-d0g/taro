@@ -35,7 +35,7 @@ async def surrealql_query(query: str, params: dict | None = None) -> str:
     try:
         async with get_db() as db:
             result = await db.query(query, params or {})
-            rows = result[0].get("result", []) if result else []
+            rows = result if isinstance(result, list) else [result] if result else []
 
             if not rows:
                 return f"Query returned no results.\nQuery: {query}"
