@@ -99,6 +99,14 @@ def test_route_ingredient_by_id_trailing_slash():
     assert route("/ingredients/creatine/") == ("_show_ingredient", ("creatine",))
 
 
+def test_route_system_patterns():
+    assert route("/system/patterns") == ("_list_patterns", ())
+
+
+def test_route_system_patterns_trailing_slash():
+    assert route("/system/patterns/") == ("_list_patterns", ())
+
+
 def test_route_invalid():
     assert route("/invalid/path/that/doesnt/match") is None
 

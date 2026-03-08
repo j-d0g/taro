@@ -244,18 +244,17 @@ def test_stream_multiple_tools(client):
 
 
 def test_stream_product_extraction(client):
-    """Stream extracts products from tool output in done event."""
+    """Stream extracts product IDs from tool output '→ /products/{id}' pattern."""
     import main
 
-    product_json = json.dumps([{
-        "id": "product:abc",
-        "name": "Test Moisturizer",
-        "price": 14.99,
-        "avg_rating": 4.5,
-        "image_url": "",
-        "vertical": "Skincare",
-        "subcategory": "Moisturisers",
-    }])
+    # Tool output uses the standard → /products/{id} format (same as find/grep/graph_traverse)
+    tool_output = (
+        "find 'moisturizer' (1 results, from 3 vector + 2 keyword):\n"
+        "\n"
+        "  Hydrating Face Cream (rrf: 0.0909, vec: 0.842, bm25: 0.85, type: product)\n"
+        "    → /products/abc123def456\n"
+        "    A rich moisturizer for dry skin..."
+    )
 
     async def mock_astream_events(input_msg, config, version="v2"):
         yield {
@@ -268,7 +267,7 @@ def test_stream_product_extraction(client):
             "event": "on_tool_end",
             "name": "find",
             "run_id": "run-1",
-            "data": {"output": product_json},
+            "data": {"output": tool_output},
         }
         yield {
             "event": "on_chat_model_stream",
@@ -281,10 +280,27 @@ def test_stream_product_extraction(client):
     mock_agent.astream_events = mock_astream_events
     main._default_agent = mock_agent
 
-    response = client.post(
-        "/chat/stream",
-        json={"message": "recommend a moisturizer"},
-    )
+    # Mock DB to return product details when fetched
+    mock_db = AsyncMock()
+    mock_db.query = AsyncMock(return_value=[{
+        "id": "product:abc123def456",
+        "name": "Test Moisturizer",
+        "price": 14.99,
+        "avg_rating": 4.5,
+        "image_url": "",
+        "vertical": "Skincare",
+        "subcategory": "Moisturisers",
+    }])
+
+    @asynccontextmanager
+    async def mock_get_db():
+        yield mock_db
+
+    with patch.object(main, "get_db", mock_get_db):
+        response = client.post(
+            "/chat/stream",
+            json={"message": "recommend a moisturizer"},
+        )
     body = response.text
 
     # Find the done event and parse its data

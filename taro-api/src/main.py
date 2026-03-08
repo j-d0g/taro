@@ -260,56 +260,9 @@ async def chat(request: ChatRequest):
                 for tc in msg.tool_calls:
                     tool_calls.append({"name": tc.get("name", ""), "args": tc.get("args", {})})
 
-        # Extract product data from tool calls
-        # Strategy: collect product IDs from cat /products/{id} calls and
-        # source_id references in find/grep results, then fetch from DB
-        products: list[dict] = []
-        product_ids: list[str] = []
-        seen_ids: set[str] = set()
-
-        for msg in messages:
-            # From cat tool calls: extract product ID from path argument
-            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                for tc in msg.tool_calls:
-                    if tc.get("name") == "cat":
-                        path = tc.get("args", {}).get("path", "")
-                        if path.startswith("/products/"):
-                            pid = path.replace("/products/", "").strip("/")
-                            if pid and pid not in seen_ids:
-                                seen_ids.add(pid)
-                                product_ids.append(pid)
-
-            # From find/grep results: extract source_id references
-            if msg.__class__.__name__ == "ToolMessage" and isinstance(msg.content, str):
-                import re
-                for match in re.finditer(r'→ /products/([a-f0-9]+)', msg.content):
-                    pid = match.group(1)
-                    if pid not in seen_ids:
-                        seen_ids.add(pid)
-                        product_ids.append(pid)
-
-        # Fetch structured product data from DB
-        if product_ids:
-            try:
-                async with get_db() as db:
-                    for pid in product_ids[:10]:  # Cap at 10
-                        result = await db.query(
-                            f"SELECT id, name, price, avg_rating, image_url, vertical, subcategory "
-                            f"FROM product:`{pid}`"
-                        )
-                        if result and isinstance(result[0], dict) and "name" in result[0]:
-                            p = result[0]
-                            products.append({
-                                "id": _str_id(p.get("id", "")),
-                                "name": p["name"],
-                                "price": p.get("price"),
-                                "avg_rating": p.get("avg_rating"),
-                                "image_url": p.get("image_url", ""),
-                                "vertical": p.get("vertical", ""),
-                                "subcategory": p.get("subcategory", ""),
-                            })
-            except Exception as prod_err:
-                logger.warning(f"Failed to fetch product details: {prod_err}")
+        # Extract product data from tool calls and tool outputs
+        product_ids = _collect_product_ids_from_messages(messages)
+        products = await _fetch_products(product_ids)
 
         # Persist conversation
         try:
@@ -368,8 +321,8 @@ async def chat_stream(request: ChatRequest):
 
     async def event_generator():
         tool_calls = []
-        products = []
-        seen_product_names = set()
+        seen_product_ids: set[str] = set()
+        collected_product_ids: list[str] = []
         active_tools = {}  # run_id -> start_time
 
         try:
@@ -389,6 +342,15 @@ async def chat_stream(request: ChatRequest):
                         "args": tool_input,
                     })
 
+                    # Extract from cat /products/{id} args
+                    if name == "cat":
+                        path = tool_input.get("path", "")
+                        if path.startswith("/products/"):
+                            pid = path.replace("/products/", "").strip("/")
+                            if pid and pid not in seen_product_ids:
+                                seen_product_ids.add(pid)
+                                collected_product_ids.append(pid)
+
                 elif kind == "on_tool_end":
                     start = active_tools.pop(run_id, None)
                     duration_ms = int((time.time() - start) * 1000) if start else 0
@@ -397,10 +359,11 @@ async def chat_stream(request: ChatRequest):
                         "name": name,
                         "duration_ms": duration_ms,
                     })
-                    # Extract products from tool output
+                    # Extract product IDs from tool output text
                     output = data.get("output", "")
                     if isinstance(output, str):
-                        _extract_products(output, products, seen_product_names)
+                        new_ids = _collect_product_ids_from_text(output, seen_product_ids)
+                        collected_product_ids.extend(new_ids)
 
                 elif kind == "on_chat_model_stream":
                     chunk = data.get("chunk")
@@ -413,6 +376,9 @@ async def chat_stream(request: ChatRequest):
                     if content and not tool_chunks:
                         yield _sse("token", {"content": content})
 
+            # Fetch structured product data for all collected IDs
+            products = await _fetch_products(collected_product_ids)
+
             # Final done event with aggregated data
             yield _sse("done", {
                 "thread_id": request.thread_id,
@@ -423,6 +389,7 @@ async def chat_stream(request: ChatRequest):
         except Exception as e:
             error_type = type(e).__name__
             logger.error(f"Stream error ({error_type}): {e}")
+            products = await _fetch_products(collected_product_ids)
             yield _sse("error", {"message": str(e), "type": error_type})
             yield _sse("done", {
                 "thread_id": request.thread_id,
@@ -442,27 +409,81 @@ def _sse(event_type: str, data: dict) -> str:
     return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
 
-def _extract_products(output: str, products: list, seen: set):
-    """Parse product data from a tool output string. Mutates products and seen."""
+import re
+
+_PRODUCT_REF_RE = re.compile(r"→ /products/([a-f0-9_]+)")
+
+
+def _collect_product_ids_from_messages(messages) -> list[str]:
+    """Extract deduplicated product IDs from tool calls and tool outputs.
+
+    Scans two sources:
+    1. Tool call args: cat calls with path='/products/{id}'
+    2. Tool output text: '→ /products/{id}' pattern (find, grep, graph_traverse)
+    """
+    seen: set[str] = set()
+    ids: list[str] = []
+
+    for msg in messages:
+        # From cat tool call args
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            for tc in msg.tool_calls:
+                if tc.get("name") == "cat":
+                    path = tc.get("args", {}).get("path", "")
+                    if path.startswith("/products/"):
+                        pid = path.replace("/products/", "").strip("/")
+                        if pid and pid not in seen:
+                            seen.add(pid)
+                            ids.append(pid)
+
+        # From tool output text (find, grep, graph_traverse all use → /products/{id})
+        if msg.__class__.__name__ == "ToolMessage" and isinstance(msg.content, str):
+            for match in _PRODUCT_REF_RE.finditer(msg.content):
+                pid = match.group(1)
+                if pid not in seen:
+                    seen.add(pid)
+                    ids.append(pid)
+
+    return ids
+
+
+def _collect_product_ids_from_text(text: str, seen: set[str]) -> list[str]:
+    """Extract product IDs from a single tool output string. For streaming use."""
+    ids = []
+    for match in _PRODUCT_REF_RE.finditer(text):
+        pid = match.group(1)
+        if pid not in seen:
+            seen.add(pid)
+            ids.append(pid)
+    return ids
+
+
+async def _fetch_products(product_ids: list[str]) -> list[dict]:
+    """Fetch structured product data from DB for a list of IDs."""
+    if not product_ids:
+        return []
+    products = []
     try:
-        data = json.loads(output)
-        items = data if isinstance(data, list) else [data]
-        for item in items:
-            if isinstance(item, dict) and "name" in item and "price" in item:
-                pname = item["name"]
-                if pname not in seen:
-                    seen.add(pname)
+        async with get_db() as db:
+            for pid in product_ids[:10]:  # Cap at 10
+                result = await db.query(
+                    f"SELECT id, name, price, avg_rating, image_url, vertical, subcategory "
+                    f"FROM product:`{pid}`"
+                )
+                if result and isinstance(result[0], dict) and "name" in result[0]:
+                    p = result[0]
                     products.append({
-                        "id": _str_id(item.get("id", "")),
-                        "name": pname,
-                        "price": item.get("price"),
-                        "avg_rating": item.get("avg_rating"),
-                        "image_url": item.get("image_url", ""),
-                        "vertical": item.get("vertical", ""),
-                        "subcategory": item.get("subcategory", ""),
+                        "id": _str_id(p.get("id", "")),
+                        "name": p["name"],
+                        "price": p.get("price"),
+                        "avg_rating": p.get("avg_rating"),
+                        "image_url": p.get("image_url", ""),
+                        "vertical": p.get("vertical", ""),
+                        "subcategory": p.get("subcategory", ""),
                     })
-    except (json.JSONDecodeError, TypeError):
-        pass
+    except Exception as prod_err:
+        logger.warning(f"Failed to fetch product details: {prod_err}")
+    return products
 
 
 # ── Conversation endpoints ──────────────────────────────────

@@ -90,9 +90,14 @@ async def graph_traverse(start_id: str, pattern: str) -> str:
                     extra += f" ({item['role']})"
                 if item.get("subcategory"):
                     extra += f" [{item['subcategory']}]"
-                if item.get("description"):
-                    extra += f"\n    {item['description'][:120]}"
                 lines.append(f"  \u2022 {name}{extra}")
+                # Product reference for structured extraction
+                item_id = str(item.get("id", ""))
+                if "product:" in item_id:
+                    sid = item_id.split("product:", 1)[1]
+                    lines.append(f"    → /products/{sid}")
+                if item.get("description"):
+                    lines.append(f"    {item['description'][:120]}")
 
             return "\n".join(lines)
     except Exception as e:

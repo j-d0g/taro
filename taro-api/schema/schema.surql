@@ -220,3 +220,9 @@ DEFINE FIELD summary ON conversation TYPE option<string>; -- LLM-distilled summa
 
 DEFINE INDEX idx_conversation_thread ON conversation FIELDS thread_id UNIQUE;
 DEFINE INDEX idx_conversation_user ON conversation FIELDS user_id;
+
+-- ============================================================
+-- LangGraph checkpoint tables (for SurrealSaver persistent state)
+-- ============================================================
+DEFINE TABLE checkpoint SCHEMALESS;
+DEFINE TABLE write SCHEMALESS;

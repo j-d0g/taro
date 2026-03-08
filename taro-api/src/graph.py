@@ -16,8 +16,7 @@ from db import get_db_config
 from prompts.system import load_prompt
 from tools import ALL_TOOLS
 
-# SurrealSaver: disabled until langgraph-checkpoint-surrealdb supports SurrealDB 3.0
-# from langgraph_checkpoint_surrealdb import SurrealSaver
+from langgraph_checkpoint_surrealdb import SurrealSaver
 
 # Optional provider imports
 try:
@@ -69,8 +68,22 @@ def build_graph(model_provider: str = None, model_name: str = None, temperature:
         temperature=temperature if temperature is not None else DEFAULT_TEMPERATURE,
     )
 
-    # TODO: Switch to SurrealSaver when langgraph-checkpoint-surrealdb supports SurrealDB 3.0
-    checkpointer = MemorySaver() if use_checkpointer else None
+    if use_checkpointer:
+        try:
+            db_config = get_db_config()
+            checkpointer = SurrealSaver(
+                url=db_config["url"],
+                namespace=db_config["namespace"],
+                database=db_config["database"],
+                user=db_config["user"],
+                password=db_config["password"],
+            )
+            logger.info("Using SurrealSaver for persistent checkpoints")
+        except Exception as e:
+            logger.warning(f"SurrealSaver failed, falling back to MemorySaver: {e}")
+            checkpointer = MemorySaver()
+    else:
+        checkpointer = None
 
     agent = create_react_agent(
         model=llm,

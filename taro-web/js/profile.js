@@ -22,6 +22,8 @@ async function renderProfile() {
   document.getElementById('profileLocation').textContent = '';
   document.getElementById('profileStats').innerHTML = '';
   document.getElementById('profileBio').innerHTML = '';
+  document.getElementById('profileContext').innerHTML = '';
+  document.getElementById('profileMemory').innerHTML = '';
   document.getElementById('profileBeauty').innerHTML = '';
   document.getElementById('profileGoals').innerHTML = '';
   document.getElementById('profileCategories').innerHTML = '';
@@ -71,6 +73,24 @@ async function renderProfile() {
     document.getElementById('profileBio').innerHTML = `
       <div class="profile-bio">${profile.bio}</div>
     `;
+  }
+
+  // ── Agent Context ─────────────────────────────────
+  if (profile.context) {
+    document.getElementById('profileContext').innerHTML = `
+      <h3 class="profile-section-title">Agent Context</h3>
+      <p class="profile-section-subtitle">via <code>POST /distill</code> — evolving memory</p>
+      <div class="profile-context">${escapeHtml(profile.context)}</div>`;
+  }
+
+  // ── Key Facts ────────────────────────────────────
+  if (profile.memory && profile.memory.length > 0) {
+    document.getElementById('profileMemory').innerHTML = `
+      <h3 class="profile-section-title">Key Facts</h3>
+      <p class="profile-section-subtitle">learned from conversations</p>
+      <div class="profile-memory"><div class="profile-memory-list">
+        ${profile.memory.map(m => `<div class="profile-memory-item">${escapeHtml(m)}</div>`).join('')}
+      </div></div>`;
   }
 
   // ── Beauty Profile ──────────────────────────────────

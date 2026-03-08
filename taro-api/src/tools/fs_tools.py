@@ -65,6 +65,7 @@ ROUTES = [
     (re.compile(r"^/goals/([^/]+)/?$"), "_show_goal"),
     (re.compile(r"^/ingredients/?$"), "_list_ingredients"),
     (re.compile(r"^/ingredients/([^/]+)/?$"), "_show_ingredient"),
+    (re.compile(r"^/system/patterns/?$"), "_list_patterns"),
 ]
 
 
@@ -115,7 +116,7 @@ def _rrf_fuse(vector_results: list, bm25_results: list, k: int = 60) -> list[dic
 # ── Handlers ─────────────────────────────────────────────────
 
 async def _handle_root(db, verbose=False):
-    return "users/  products/  categories/  goals/  ingredients/"
+    return "users/  products/  categories/  goals/  ingredients/  system/"
 
 
 async def _handle_list_users(db, verbose=False):
@@ -470,6 +471,22 @@ async def _handle_show_ingredient(db, ingredient_id, verbose=False):
     return "\n".join(lines)
 
 
+async def _handle_list_patterns(db, verbose=False):
+    """List learned tool-selection patterns and recent failures."""
+    patterns = await db.query("SELECT * FROM learned_pattern ORDER BY success_count DESC LIMIT 20")
+    failures = await db.query("SELECT * FROM failure_record ORDER BY created_at DESC LIMIT 10")
+    patterns = patterns or []
+    failures = failures or []
+
+    lines = [f"Learned patterns ({len(patterns)}):"]
+    for p in patterns:
+        lines.append(f"  [{p.get('pattern_type', '?')}] {p.get('query_pattern', '?')} -> {p.get('best_tool', '?')} (x{p.get('success_count', 0)})")
+    lines.append(f"\nRecent failures ({len(failures)}):")
+    for f in failures:
+        lines.append(f"  {f.get('tool_used', '?')}: {f.get('error', '?')[:80]}")
+    return "\n".join(lines)
+
+
 # ── Dispatch ─────────────────────────────────────────────────
 
 _HANDLERS = {
@@ -485,6 +502,7 @@ _HANDLERS = {
     "_show_goal": _handle_show_goal,
     "_list_ingredients": _handle_list_ingredients,
     "_show_ingredient": _handle_show_ingredient,
+    "_list_patterns": _handle_list_patterns,
 }
 
 
