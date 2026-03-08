@@ -119,13 +119,13 @@ async def _handle_root(db, verbose=False):
 
 
 async def _handle_list_users(db, verbose=False):
-    result = await db.query("SELECT id, name, profile_type, experience_level FROM user")
+    result = await db.query("SELECT id, name, profile_type, experience_level FROM customer")
     rows = result or []
     if not rows:
         return "No users found."
     lines = [f"{'Users' if not verbose else 'All users'} ({len(rows)}):"]
     for u in rows:
-        uid = str(u.get("id", "")).replace("user:", "")
+        uid = str(u.get("id", "")).replace("customer:", "")
         name = u.get("name", "?")
         ptype = u.get("profile_type", "")
         level = u.get("experience_level", "")
@@ -134,7 +134,7 @@ async def _handle_list_users(db, verbose=False):
 
 
 async def _handle_show_user(db, user_id, verbose=False):
-    result = await db.query(f"SELECT * FROM user:{user_id}")
+    result = await db.query(f"SELECT * FROM customer:{user_id}")
     rows = result or []
     if not rows:
         return f"User not found: {user_id}"
@@ -205,9 +205,9 @@ async def _handle_list_user_orders(db, user_id, verbose=False):
     )
     orders = result[0].get("orders", []) if result else []
     if not orders:
-        return f"No orders found for user:{user_id}"
+        return f"No orders found for customer:{user_id}"
 
-    lines = [f"Orders for user:{user_id} ({len(orders)}):"]
+    lines = [f"Orders for customer:{user_id} ({len(orders)}):"]
     for o in orders:
         oid = str(o.get("id", ""))
         date = str(o.get("order_date", ""))[:10]
@@ -621,14 +621,14 @@ async def grep(query: str, scope: str = "") -> str:
                 return "\n".join(lines)
 
             elif scope == "/users":
-                surql = "SELECT id, name, profile_type, experience_level FROM user WHERE name ~ $query"
+                surql = "SELECT id, name, profile_type, experience_level FROM customer WHERE name ~ $query"
                 result = await db.query(surql, {"query": query})
                 rows = result or []
                 if not rows:
                     return f"No users matching '{query}'"
                 lines = [f"grep '{query}' /users ({len(rows)} matches):"]
                 for u in rows:
-                    uid = str(u.get("id", "")).replace("user:", "")
+                    uid = str(u.get("id", "")).replace("customer:", "")
                     name = u.get("name", "?")
                     ptype = u.get("profile_type", "")
                     lines.append(f"  {uid}/  {name} ({ptype})")
@@ -776,11 +776,11 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
     if path == "":
         # Root: count each top-level collection
         counts = {}
-        for table in ("user", "product", "category", "goal", "ingredient"):
+        for table in ("customer", "product", "category", "goal", "ingredient"):
             result = await db.query(f"SELECT count() AS c FROM {table} GROUP ALL")
             counts[table] = result[0].get("c", 0) if result else 0
         return [
-            (f"users/ ({counts['user']})", "/users", True),
+            (f"users/ ({counts['customer']})", "/users", True),
             (f"products/ ({counts['product']} items — use ls /products/)", "/products", False),
             (f"categories/ ({counts['category']})", "/categories", True),
             (f"goals/ ({counts['goal']})", "/goals", True),
@@ -788,12 +788,12 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
         ]
 
     if path == "/users":
-        result = await db.query("SELECT id, name, profile_type FROM user")
+        result = await db.query("SELECT id, name, profile_type FROM customer")
         rows = result or []
         return [
             (
-                f"{str(u['id']).replace('user:', '')}  {u.get('name', '?')} ({u.get('profile_type', '')})",
-                f"/users/{str(u['id']).replace('user:', '')}",
+                f"{str(u['id']).replace('customer:', '')}  {u.get('name', '?')} ({u.get('profile_type', '')})",
+                f"/users/{str(u['id']).replace('customer:', '')}",
                 True,
             )
             for u in rows

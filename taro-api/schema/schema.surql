@@ -30,25 +30,7 @@ DEFINE INDEX idx_documents_title ON documents FIELDS title
 DEFINE INDEX idx_documents_doc_type ON documents FIELDS doc_type;
 
 -- ============================================================
--- User (customer / shopper profile)
--- ============================================================
-DEFINE TABLE user SCHEMAFULL;
-
-DEFINE FIELD name ON user TYPE string;
-DEFINE FIELD email ON user TYPE option<string>;
-DEFINE FIELD city ON user TYPE option<string>;
-DEFINE FIELD age ON user TYPE option<int>;
-DEFINE FIELD profile_type ON user TYPE option<string>;       -- "skincare enthusiast", "fitness beginner", etc.
-DEFINE FIELD experience_level ON user TYPE option<string>;   -- "beginner", "intermediate", "advanced"
-DEFINE FIELD goals ON user TYPE option<array<string>>;       -- ["clear skin", "muscle gain"]
-DEFINE FIELD dietary_restrictions ON user TYPE option<array<string>>; -- ["vegan", "gluten-free"]
-DEFINE FIELD preferred_brands ON user TYPE option<array<string>>;
-DEFINE FIELD skin_type ON user TYPE option<string>;          -- "dry", "oily", "combination", "sensitive"
-DEFINE FIELD context ON user TYPE option<string>;            -- LLM-readable summary
-DEFINE FIELD memory ON user TYPE option<array<string>>;      -- key facts for personalisation
-
--- ============================================================
--- Customer (from CSV dataset)
+-- Customer (user / shopper profile)
 -- ============================================================
 DEFINE TABLE customer SCHEMAFULL;
 
@@ -65,6 +47,11 @@ DEFINE FIELD bio ON customer TYPE option<string>;
 DEFINE FIELD profile_type ON customer TYPE option<string>;
 DEFINE FIELD experience_level ON customer TYPE option<string>;
 DEFINE FIELD preferred_brands ON customer TYPE option<array<string>>;
+DEFINE FIELD email ON customer TYPE option<string>;
+DEFINE FIELD goals ON customer TYPE option<array<string>>;
+DEFINE FIELD dietary_restrictions ON customer TYPE option<array<string>>;
+DEFINE FIELD context ON customer TYPE option<string>;            -- LLM-readable summary
+DEFINE FIELD memory ON customer TYPE option<array<string>>;      -- key facts for personalisation
 
 -- ============================================================
 -- Product (structured data for graph + direct queries)

@@ -137,7 +137,7 @@ async function sendChatMessage(message, threadId) {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, thread_id: threadId }),
+      body: JSON.stringify({ message, thread_id: threadId, user_id: typeof DEMO_CUSTOMER_ID !== 'undefined' ? DEMO_CUSTOMER_ID : null }),
     });
     if (!res.ok) throw new Error(`API ${res.status}`);
 

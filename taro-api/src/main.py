@@ -126,34 +126,38 @@ async def chat(request: ChatRequest):
                 from db import get_db
                 async with get_db() as db:
                     user_result = await db.query(
-                        f"SELECT * FROM user:{request.user_id}"
+                        f"SELECT * FROM customer:{request.user_id}"
                     )
                     if user_result:
                         user = user_result[0] if isinstance(user_result[0], dict) and "id" in user_result[0] else (user_result[0].get("result", [{}])[0] if isinstance(user_result[0], dict) else {})
                         if user:
                             name = user.get("name", request.user_id)
-                            goals = ", ".join(user.get("goals", []))
-                            skin_type = user.get("skin_type", "")
-                            prefs = user.get("preferences", {})
-                            context = user.get("context", "")
-                            parts = [f"\n[User: {name}]"]
-                            if goals:
-                                parts.append(f"Goals: {goals}")
-                            if skin_type:
-                                parts.append(f"Skin type: {skin_type}")
-                            if prefs:
-                                parts.append(f"Preferences: {prefs}")
-                            if context:
-                                parts.append(f"Previous context: {context}")
-                            memory = user.get("memory", [])
-                            if memory:
-                                parts.append(f"Key facts: {'; '.join(memory)}")
-                            dietary = user.get("dietary_restrictions", [])
-                            if dietary:
-                                parts.append(f"Dietary: {', '.join(dietary)}")
-                            brands = user.get("preferred_brands", [])
-                            if brands:
-                                parts.append(f"Preferred brands: {', '.join(brands)}")
+                            parts = [f"\n[User: {name} — customer:{request.user_id}]"]
+                            # Graph hint so agent can traverse
+                            parts.append(f"Graph entry: cat /users/{request.user_id} or graph_traverse('customer:{request.user_id}', 'placed')")
+                            # Profile fields
+                            if user.get("bio"):
+                                parts.append(f"Bio: {user['bio']}")
+                            if user.get("skin_type"):
+                                parts.append(f"Skin type: {user['skin_type']}")
+                            if user.get("hair_type"):
+                                parts.append(f"Hair type: {user['hair_type']}")
+                            if user.get("concerns"):
+                                parts.append(f"Concerns: {', '.join(user['concerns'])}")
+                            if user.get("allergies"):
+                                parts.append(f"Allergies: {', '.join(user['allergies'])}")
+                            if user.get("goals"):
+                                parts.append(f"Goals: {', '.join(user['goals'])}")
+                            if user.get("preferences"):
+                                parts.append(f"Preferences: {', '.join(user['preferences'])}")
+                            if user.get("preferred_brands"):
+                                parts.append(f"Preferred brands: {', '.join(user['preferred_brands'])}")
+                            if user.get("dietary_restrictions"):
+                                parts.append(f"Dietary: {', '.join(user['dietary_restrictions'])}")
+                            if user.get("context"):
+                                parts.append(f"Previous context: {user['context']}")
+                            if user.get("memory"):
+                                parts.append(f"Key facts: {'; '.join(user['memory'])}")
                             user_context = " | ".join(parts)
             except Exception as ue:
                 logger.warning(f"Failed to load user context: {ue}")
@@ -266,7 +270,7 @@ async def distill(request: DistillRequest):
         # Load existing context
         existing_context = ""
         async with get_db() as db:
-            user_result = await db.query(f"SELECT context FROM user:{request.user_id}")
+            user_result = await db.query(f"SELECT context FROM customer:{request.user_id}")
             if user_result and isinstance(user_result[0], dict):
                 existing_context = user_result[0].get("context", "") or ""
 
@@ -287,7 +291,7 @@ async def distill(request: DistillRequest):
         # Update user record
         async with get_db() as db:
             await db.query(
-                f"UPDATE user:{request.user_id} SET context = $context",
+                f"UPDATE customer:{request.user_id} SET context = $context",
                 {"context": new_context},
             )
 
