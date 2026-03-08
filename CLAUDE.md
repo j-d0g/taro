@@ -2,13 +2,14 @@
 
 ## Project
 
-E-commerce chatbot MVP: LangGraph ReAct agent with 8 SurrealDB search tools (vector, BM25, graph, hybrid RRF, schema introspection, direct lookup, raw SurrealQL, web fallback). Single SurrealDB backend for all data + checkpointing.
+E-commerce chatbot MVP: LangGraph ReAct agent with 9 SurrealFS tools (filesystem metaphor over SurrealDB's vector, BM25, graph models). Single SurrealDB backend for all data + checkpointing.
 
 - **API code**: `taro-api/src/` (FastAPI + LangGraph agent)
 - **Frontend**: `taro-web/` (placeholder)
 - **Schema**: `taro-api/schema/schema.surql` + `taro-api/schema/seed.py`
 - **Config**: `taro-api/config/.env`
 - **Run**: `cd taro-api && make serve` | `make studio` | `make seed`
+- **Test**: `cd taro-api && make verify` (unit) | `make smoke` (3 quick queries) | `make stress` (43 adversarial queries)
 
 ## Workflow: 5-Phase Agent Swarm
 
@@ -85,7 +86,7 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 
 - Python 3.11+, FastAPI, LangGraph, LangChain
 - SurrealDB (vector HNSW + BM25 + graph RELATE + hybrid RRF)
-- OpenAI embeddings (text-embedding-3-small, 1536 dims)
+- OpenAI embeddings (text-embedding-3-small, 1536 dims) -- cached in `fs_tools.py` LRU
 - Tavily search (domain-scoped to myprotein.com)
 - LangSmith for observability
 - `langgraph-checkpoint-surrealdb` for persistent state
@@ -97,3 +98,24 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 - Hybrid search uses client-side RRF fusion (two separate queries, not `search::rrf()`)
 - `doc_type` filtering uses parameterized queries (`$doc_type`), never f-string interpolation
 - System prompts live in `src/prompts/templates/*.md` (file-based, swappable per request)
+
+## SurrealDB 3.0 Rules (CRITICAL)
+
+- `db.query()` returns flat lists, NOT `[{"result": [...]}]`. Always use `result or []` directly.
+- KNN `<|N|>` operator is BROKEN. Use `ORDER BY vector::similarity::cosine(embedding, $vec) DESC LIMIT N`.
+- BM25 `@1@` operator may return empty. Always add `CONTAINS` fallback path.
+- `INFO FOR DB/TABLE` returns dict directly. Handle with `isinstance` checks for both formats.
+- SurrealSaver is incompatible with 3.0 -- use MemorySaver.
+- After adding graph edges to schema, immediately update graph_traverse EDGE_TYPES and docstring.
+
+## Integration Testing Rules
+
+- **Always restart the API after code changes before running integration/stress tests.** Use `make restart`.
+- **Never run 40+ LLM calls back-to-back without pacing.** Add 2s+ delay to avoid OpenAI rate limits.
+- **Classify test failures by error type** (rate_limit vs logic vs tool_selection). Don't count rate limits as harness failures.
+- **Use `make smoke` for quick validation** (3 queries, ~1 min) before running full `make stress` (43 queries, ~20 min).
+
+## Custom Agents
+
+- **`stress-test`**: Run adversarial stress test suite with pre-flight checks. Use via Task tool with `subagent_type: "stress-test"`.
+- **`restart-api`**: Kill and restart the FastAPI server. Use via Task tool with `subagent_type: "restart-api"`.
