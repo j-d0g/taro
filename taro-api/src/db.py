@@ -15,6 +15,7 @@ SURREALDB_NAMESPACE = os.getenv("SURREALDB_NAMESPACE", "hackathon")
 SURREALDB_DATABASE = os.getenv("SURREALDB_DATABASE", "chatbot")
 SURREALDB_USER = os.getenv("SURREALDB_USER", "root")
 SURREALDB_PASS = os.getenv("SURREALDB_PASS", "root")
+SURREALDB_TOKEN = os.getenv("SURREALDB_TOKEN", "")
 
 
 @lru_cache(maxsize=1)
@@ -26,6 +27,7 @@ def get_db_config() -> dict:
         "database": SURREALDB_DATABASE,
         "user": SURREALDB_USER,
         "password": SURREALDB_PASS,
+        "token": SURREALDB_TOKEN,
     }
 
 
@@ -33,11 +35,21 @@ def get_db_config() -> dict:
 async def get_db():
     """Async context manager that yields a connected AsyncSurreal instance.
 
+    Supports both token auth (SurrealDB Cloud) and username/password (local).
+
     Usage:
         async with get_db() as db:
             result = await db.query("SELECT * FROM documents")
     """
     async with AsyncSurreal(SURREALDB_URL) as db:
-        await db.signin({"username": SURREALDB_USER, "password": SURREALDB_PASS})
+        if SURREALDB_TOKEN:
+            await db.authenticate(SURREALDB_TOKEN)
+        else:
+            await db.signin({
+                "username": SURREALDB_USER,
+                "password": SURREALDB_PASS,
+                "namespace": SURREALDB_NAMESPACE,
+                "database": SURREALDB_DATABASE,
+            })
         await db.use(SURREALDB_NAMESPACE, SURREALDB_DATABASE)
         yield db
