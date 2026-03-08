@@ -7,6 +7,12 @@ let currentFilter = 'All';
 let currentSubcategory = null;
 let cachedProducts = null;
 
+// ── Vertical name → CSS class helper ──────────────────
+
+function verticalClass(name) {
+  return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
 // ── Render product grid ────────────────────────────────
 
 async function renderProducts(filter = 'All', search = '', subcategory = null) {
@@ -46,7 +52,7 @@ async function renderProducts(filter = 'All', search = '', subcategory = null) {
 
   grid.innerHTML = filtered.map(p => `
     <div class="product-card" data-id="${p.id}" onclick="openProductDetail('${p.id}')">
-      <span class="vertical-badge ${p.vertical}">${p.vertical}</span>
+      <span class="vertical-badge ${verticalClass(p.vertical)}">${p.vertical}</span>
       <div class="product-image">
         ${p.image_url
           ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy"
@@ -68,9 +74,40 @@ async function renderProducts(filter = 'All', search = '', subcategory = null) {
   `).join('');
 }
 
+// ── Dynamic filter tabs from API ─────────────────────
+
+async function initDynamicTabs() {
+  const filterBar = document.getElementById('filterBar');
+  const countSpan = filterBar.querySelector('.filter-count');
+
+  // Fetch real verticals from API (or derive from mock data)
+  const verticals = await fetchVerticals();
+
+  // Build tab buttons: "All" + each vertical
+  const allBtn = document.createElement('button');
+  allBtn.className = 'filter-tab active';
+  allBtn.dataset.vertical = 'All';
+  allBtn.textContent = 'All';
+  filterBar.insertBefore(allBtn, countSpan);
+
+  for (const v of verticals) {
+    const btn = document.createElement('button');
+    btn.className = 'filter-tab';
+    btn.dataset.vertical = v;
+    btn.textContent = v;
+    filterBar.insertBefore(btn, countSpan);
+  }
+
+  // Wire up filter + search events
+  initFilters();
+
+  // Render initial products
+  await renderProducts();
+}
+
 // ── Subcategory chips ────────────────────────────────────
 
-function renderSubcategories(vertical) {
+async function renderSubcategories(vertical) {
   const bar = document.getElementById('subcategoryBar');
   if (!vertical || vertical === 'All') {
     bar.innerHTML = '';
@@ -79,7 +116,9 @@ function renderSubcategories(vertical) {
     return;
   }
 
-  const subs = typeof MOCK_SUBCATEGORIES !== 'undefined' ? (MOCK_SUBCATEGORIES[vertical] || []) : [];
+  // Fetch subcategory names from API (falls back to mock)
+  const subs = await fetchCategories(vertical);
+
   bar.innerHTML = `
     <button class="subcategory-chip ${!currentSubcategory ? 'active' : ''}"
             onclick="selectSubcategory(null)">All ${vertical}</button>
@@ -125,8 +164,9 @@ async function openProductDetail(id) {
     imgEl.innerHTML = '<div class="placeholder" style="font-size:80px">&#128722;</div>';
   }
 
+  const vc = verticalClass(data.vertical);
   document.getElementById('modalVertical').textContent = data.vertical || '';
-  document.getElementById('modalVertical').className = `modal-vertical ${data.vertical || ''}`;
+  document.getElementById('modalVertical').className = `modal-vertical ${vc}`;
   document.getElementById('modalName').textContent = data.name;
   document.getElementById('modalDescription').textContent =
     data.description || `${data.subcategory || ''} product in the ${data.vertical || ''} range.`;

@@ -94,7 +94,7 @@ async function renderProfile() {
               <div>
                 <div class="profile-purchase-name">${product.name}</div>
                 <div class="profile-purchase-meta">
-                  <span class="vertical-badge-sm ${product.vertical}">${product.vertical}</span>
+                  <span class="vertical-badge-sm ${verticalClass(product.vertical)}">${product.vertical}</span>
                   ${product.subcategory || ''}
                 </div>
               </div>

@@ -411,19 +411,19 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
-.vertical-badge.Fitness {
+.vertical-badge.skincare {
   background: rgba(74, 157, 91, 0.12);
   color: var(--success);
   border: 1px solid rgba(74, 157, 91, 0.2);
 }
 
-.vertical-badge.Beauty {
+.vertical-badge.haircare {
   background: rgba(201, 169, 110, 0.12);
   color: var(--gold-hover);
   border: 1px solid rgba(201, 169, 110, 0.2);
 }
 
-.vertical-badge.Wellness {
+.vertical-badge.body-fragrance {
   background: rgba(130, 100, 180, 0.12);
   color: #7B5EA7;
   border: 1px solid rgba(130, 100, 180, 0.2);
@@ -526,9 +526,9 @@ body {
   display: inline-block;
 }
 
-.modal-vertical.Fitness { background: rgba(74, 157, 91, 0.1); color: var(--success); }
-.modal-vertical.Beauty { background: var(--gold-bg); color: var(--gold-hover); }
-.modal-vertical.Wellness { background: rgba(130, 100, 180, 0.1); color: #7B5EA7; }
+.modal-vertical.skincare { background: rgba(74, 157, 91, 0.1); color: var(--success); }
+.modal-vertical.haircare { background: var(--gold-bg); color: var(--gold-hover); }
+.modal-vertical.body-fragrance { background: rgba(130, 100, 180, 0.1); color: #7B5EA7; }
 
 .modal-name {
   font-family: var(--font-display);
@@ -1285,9 +1285,9 @@ body {
   text-transform: uppercase;
 }
 
-.vertical-badge-sm.Fitness { background: rgba(74, 157, 91, 0.1); color: var(--success); }
-.vertical-badge-sm.Beauty { background: var(--gold-bg); color: var(--gold-hover); }
-.vertical-badge-sm.Wellness { background: rgba(130, 100, 180, 0.1); color: #7B5EA7; }
+.vertical-badge-sm.skincare { background: rgba(74, 157, 91, 0.1); color: var(--success); }
+.vertical-badge-sm.haircare { background: var(--gold-bg); color: var(--gold-hover); }
+.vertical-badge-sm.body-fragrance { background: rgba(130, 100, 180, 0.1); color: #7B5EA7; }
 
 .profile-purchase-right { text-align: right; flex-shrink: 0; }
 
@@ -1429,6 +1429,89 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
+}
+
+/* ── Chat Product Cards ──────────────────────────────── */
+.chat-product-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.chat-product-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-product-card:hover {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-product-img {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  opacity: 0.3;
+  flex-shrink: 0;
+}
+
+.chat-product-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+}
+
+.chat-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-product-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.chat-product-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.chat-product-price {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.chat-product-rating {
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 /* ── Loading Skeleton ──────────────────────────────── */

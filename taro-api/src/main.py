@@ -1,5 +1,6 @@
 """FastAPI entry point for Taro.ai chatbot."""
 
+import json
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -40,6 +41,7 @@ class ChatResponse(BaseModel):
     reply: str
     thread_id: str
     tool_calls: list[dict] = []
+    products: list[dict] = []
 
 
 AVAILABLE_MODELS = {
@@ -118,7 +120,37 @@ async def chat(request: ChatRequest):
             for tc in msg.tool_calls:
                 tool_calls.append({"name": tc.get("name", ""), "args": tc.get("args", {})})
 
-    return ChatResponse(reply=reply, thread_id=request.thread_id, tool_calls=tool_calls)
+    # Extract product data from tool result messages
+    products: list[dict] = []
+    seen_product_names: set[str] = set()
+    for msg in messages:
+        if msg.__class__.__name__ == "ToolMessage" and isinstance(msg.content, str):
+            try:
+                data = json.loads(msg.content)
+                items = data if isinstance(data, list) else [data]
+                for item in items:
+                    if isinstance(item, dict) and "name" in item and "price" in item:
+                        pname = item["name"]
+                        if pname not in seen_product_names:
+                            seen_product_names.add(pname)
+                            products.append({
+                                "id": _str_id(item.get("id", "")),
+                                "name": pname,
+                                "price": item.get("price"),
+                                "avg_rating": item.get("avg_rating"),
+                                "image_url": item.get("image_url", ""),
+                                "vertical": item.get("vertical", ""),
+                                "subcategory": item.get("subcategory", ""),
+                            })
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    return ChatResponse(
+        reply=reply,
+        thread_id=request.thread_id,
+        tool_calls=tool_calls,
+        products=products,
+    )
 
 
 def _str_id(record_id) -> str:
@@ -155,13 +187,20 @@ async def list_products(
         surql = (
             "SELECT id, name, vertical, subcategory, price, avg_rating, brand, "
             f"image_url, description FROM product{where} ORDER BY name "
-            f"LIMIT {min(limit, 200)} START {offset}"
+            f"LIMIT {min(limit, 500)} START {offset}"
         )
         rows = await db.query(surql, params)
 
+        # Deduplicate by product name (CSV has ~1890 rows but only ~355 unique)
+        seen: dict[str, bool] = {}
+        deduped: list[dict] = []
         for row in rows:
-            row["id"] = _str_id(row.get("id", ""))
-        return rows
+            name = row.get("name", "")
+            if name not in seen:
+                seen[name] = True
+                row["id"] = _str_id(row.get("id", ""))
+                deduped.append(row)
+        return deduped
 
 
 @app.get("/products/{product_id}")
