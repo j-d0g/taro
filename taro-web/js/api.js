@@ -183,6 +183,62 @@ async function sendChatMessage(message, threadId) {
   }
 }
 
+// ── Streaming chat (SSE) ──────────────────────────────
+
+/**
+ * Stream chat response via SSE. Calls onEvent(type, data) for each event.
+ * Event types: "thinking", "tool_start", "tool_end", "token", "done", "error".
+ */
+async function sendChatMessageStream(message, threadId, onEvent) {
+  const res = await fetch(`${API_BASE}/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      thread_id: threadId,
+      user_id: typeof DEMO_CUSTOMER_ID !== 'undefined' ? DEMO_CUSTOMER_ID : null,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`API ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop();
+
+    for (const block of blocks) {
+      if (!block.trim()) continue;
+      let eventType = null;
+      let data = null;
+
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7);
+        } else if (line.startsWith('data: ')) {
+          try {
+            data = JSON.parse(line.slice(6));
+          } catch (e) {
+            console.warn('SSE parse error:', line);
+          }
+        }
+      }
+
+      if (eventType && data) {
+        onEvent(eventType, data);
+      }
+    }
+  }
+}
+
 // ── Health check ───────────────────────────────────────
 
 async function checkApiHealth() {

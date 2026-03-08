@@ -963,6 +963,49 @@ body {
 
 .tool-card.expanded .tool-card-detail { display: block; }
 
+/* ── Streaming ────────────────────────── */
+
+.msg-bubble.streaming::after {
+  content: '|';
+  animation: blink 0.8s step-end infinite;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.tool-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-left: auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.streaming-tool {
+  border-left: 2px solid var(--gold);
+}
+
+.completed-tool {
+  border-left: 2px solid var(--success);
+}
+
+.tool-duration {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .tool-label {
   font-size: 9px;
   padding: 2px 7px;

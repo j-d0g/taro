@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -9,6 +10,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -88,6 +90,77 @@ def _get_agent(provider: Optional[str], model: Optional[str], prompt_id: str):
     return _agent_cache[key]
 
 
+async def _build_message_content(message: str, user_id: str | None) -> str:
+    """Prepend user context to the message if user_id is provided."""
+    if not user_id:
+        return message
+    try:
+        async with get_db() as db:
+            user_result = await db.query(f"SELECT * FROM customer:{user_id}")
+            if not user_result:
+                return message
+            user = user_result[0] if isinstance(user_result[0], dict) and "id" in user_result[0] else (
+                user_result[0].get("result", [{}])[0] if isinstance(user_result[0], dict) else {}
+            )
+            if not user:
+                return message
+            name = user.get("name", user_id)
+            parts = [f"\n[User: {name} — customer:{user_id}]"]
+
+            # Profile fields
+            profile_fields = {
+                "bio": "Bio", "skin_type": "Skin type", "hair_type": "Hair type",
+                "context": "Previous context",
+            }
+            list_fields = {
+                "concerns": "Concerns", "allergies": "Allergies", "goals": "Goals",
+                "preferences": "Preferences", "preferred_brands": "Preferred brands",
+                "dietary_restrictions": "Dietary",
+            }
+            for field, label in profile_fields.items():
+                if user.get(field):
+                    parts.append(f"{label}: {user[field]}")
+            for field, label in list_fields.items():
+                if user.get(field):
+                    parts.append(f"{label}: {', '.join(user[field])}")
+            if user.get("memory"):
+                parts.append(f"Key facts: {'; '.join(user['memory'])}")
+
+            # Purchase history via graph traversal
+            purchase_rows = await db.query(
+                "SELECT ->placed->order->contains->product.{name, price, subcategory} "
+                f"AS products FROM customer:{user_id}"
+            )
+            bought_products = purchase_rows[0].get("products", []) if purchase_rows else []
+            if bought_products:
+                purchase_summary = [f"{p['name']} (£{p.get('price', '?')})" for p in bought_products[:8]]
+                parts.append(f"Recent purchases: {', '.join(purchase_summary)}")
+
+            # Reviews via graph traversal
+            review_rows = await db.query(
+                "SELECT ->placed->order->has_review->review.{score, comment, sentiment} "
+                f"AS reviews FROM customer:{user_id}"
+            )
+            reviews = review_rows[0].get("reviews", []) if review_rows else []
+            if reviews:
+                review_parts = []
+                for r in reviews[:5]:
+                    score = r.get("score", "?")
+                    comment = r.get("comment", "")
+                    snippet = comment[:60] + "..." if len(comment) > 60 else comment
+                    sentiment = r.get("sentiment", "")
+                    review_parts.append(f"{score}/5 ({sentiment}): \"{snippet}\"")
+                parts.append(f"Their reviews: {'; '.join(review_parts)}")
+
+            # Graph hint for deeper exploration
+            parts.append(f"Graph entry: cat /users/{user_id} or graph_traverse('customer:{user_id}', 'customer_history')")
+
+            return " | ".join(parts) + f"\n\n{message}"
+    except Exception as ue:
+        logger.warning(f"Failed to load user context: {ue}")
+        return message
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _default_agent
@@ -119,76 +192,7 @@ async def chat(request: ChatRequest):
 
         config = {"configurable": {"thread_id": request.thread_id}}
 
-        # Inject user context if user_id provided
-        user_context = ""
-        if request.user_id:
-            try:
-                from db import get_db
-                async with get_db() as db:
-                    user_result = await db.query(
-                        f"SELECT * FROM customer:{request.user_id}"
-                    )
-                    if user_result and isinstance(user_result[0], dict) and "id" in user_result[0]:
-                        user = user_result[0]
-                        name = user.get("name", request.user_id)
-                        parts = [f"\n[User: {name} — customer:{request.user_id}]"]
-
-                        # Profile fields
-                        profile_fields = {
-                            "bio": "Bio", "skin_type": "Skin type", "hair_type": "Hair type",
-                            "context": "Previous context",
-                        }
-                        list_fields = {
-                            "concerns": "Concerns", "allergies": "Allergies", "goals": "Goals",
-                            "preferences": "Preferences", "preferred_brands": "Preferred brands",
-                            "dietary_restrictions": "Dietary",
-                        }
-                        for field, label in profile_fields.items():
-                            if user.get(field):
-                                parts.append(f"{label}: {user[field]}")
-                        for field, label in list_fields.items():
-                            if user.get(field):
-                                parts.append(f"{label}: {', '.join(user[field])}")
-                        if user.get("memory"):
-                            parts.append(f"Key facts: {'; '.join(user['memory'])}")
-
-                        # Purchase history via graph traversal
-                        purchase_rows = await db.query(
-                            "SELECT ->placed->order->contains->product.{name, price, subcategory} "
-                            f"AS products FROM customer:{request.user_id}"
-                        )
-                        bought_products = purchase_rows[0].get("products", []) if purchase_rows else []
-                        if bought_products:
-                            purchase_summary = [f"{p['name']} (£{p.get('price', '?')})" for p in bought_products[:8]]
-                            parts.append(f"Recent purchases: {', '.join(purchase_summary)}")
-
-                        # Reviews via graph traversal
-                        review_rows = await db.query(
-                            "SELECT ->placed->order->has_review->review.{score, comment, sentiment} "
-                            f"AS reviews FROM customer:{request.user_id}"
-                        )
-                        reviews = review_rows[0].get("reviews", []) if review_rows else []
-                        if reviews:
-                            review_parts = []
-                            for r in reviews[:5]:
-                                score = r.get("score", "?")
-                                comment = r.get("comment", "")
-                                snippet = comment[:60] + "..." if len(comment) > 60 else comment
-                                sentiment = r.get("sentiment", "")
-                                review_parts.append(f"{score}/5 ({sentiment}): \"{snippet}\"")
-                            parts.append(f"Their reviews: {'; '.join(review_parts)}")
-
-                        # Graph hint for deeper exploration
-                        parts.append(f"Graph entry: cat /users/{request.user_id} or graph_traverse('customer:{request.user_id}', 'placed')")
-
-                        user_context = " | ".join(parts)
-            except Exception as ue:
-                logger.warning(f"Failed to load user context: {ue}")
-
-        message_content = request.message
-        if user_context:
-            message_content = f"{user_context}\n\n{request.message}"
-
+        message_content = await _build_message_content(request.message, request.user_id)
         input_msg = {"messages": [HumanMessage(content=message_content)]}
 
         result = await agent.ainvoke(input_msg, config=config)
@@ -285,6 +289,119 @@ async def chat(request: ChatRequest):
             thread_id=request.thread_id,
             tool_calls=[],
         )
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Stream agent response via Server-Sent Events.
+
+    Emits events: thinking, tool_start, tool_end, token, done.
+    """
+    logger.info(f"Stream request: thread={request.thread_id}, message='{request.message[:80]}'")
+
+    agent = _get_agent(request.model_provider, request.model_name, request.prompt_id)
+    config = {"configurable": {"thread_id": request.thread_id}}
+
+    message_content = await _build_message_content(request.message, request.user_id)
+    input_msg = {"messages": [HumanMessage(content=message_content)]}
+
+    async def event_generator():
+        tool_calls = []
+        products = []
+        seen_product_names = set()
+        active_tools = {}  # run_id -> start_time
+
+        try:
+            async for event in agent.astream_events(input_msg, config=config, version="v2"):
+                kind = event.get("event", "")
+                name = event.get("name", "")
+                run_id = event.get("run_id", "")
+                data = event.get("data", {})
+
+                if kind == "on_tool_start":
+                    tool_input = data.get("input", {})
+                    active_tools[run_id] = time.time()
+                    tool_calls.append({"name": name, "args": tool_input})
+                    yield _sse("tool_start", {
+                        "id": run_id,
+                        "name": name,
+                        "args": tool_input,
+                    })
+
+                elif kind == "on_tool_end":
+                    start = active_tools.pop(run_id, None)
+                    duration_ms = int((time.time() - start) * 1000) if start else 0
+                    yield _sse("tool_end", {
+                        "id": run_id,
+                        "name": name,
+                        "duration_ms": duration_ms,
+                    })
+                    # Extract products from tool output
+                    output = data.get("output", "")
+                    if isinstance(output, str):
+                        _extract_products(output, products, seen_product_names)
+
+                elif kind == "on_chat_model_stream":
+                    chunk = data.get("chunk")
+                    if chunk is None:
+                        continue
+                    content = getattr(chunk, "content", "")
+                    tool_chunks = getattr(chunk, "tool_call_chunks", [])
+
+                    # Text content = either thinking (intermediate) or final response token
+                    if content and not tool_chunks:
+                        yield _sse("token", {"content": content})
+
+            # Final done event with aggregated data
+            yield _sse("done", {
+                "thread_id": request.thread_id,
+                "tool_calls": tool_calls,
+                "products": products,
+            })
+
+        except Exception as e:
+            error_type = type(e).__name__
+            logger.error(f"Stream error ({error_type}): {e}")
+            yield _sse("error", {"message": str(e), "type": error_type})
+            yield _sse("done", {
+                "thread_id": request.thread_id,
+                "tool_calls": tool_calls,
+                "products": products,
+            })
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse(event_type: str, data: dict) -> str:
+    """Format a single SSE event."""
+    return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+
+def _extract_products(output: str, products: list, seen: set):
+    """Parse product data from a tool output string. Mutates products and seen."""
+    try:
+        data = json.loads(output)
+        items = data if isinstance(data, list) else [data]
+        for item in items:
+            if isinstance(item, dict) and "name" in item and "price" in item:
+                pname = item["name"]
+                if pname not in seen:
+                    seen.add(pname)
+                    products.append({
+                        "id": _str_id(item.get("id", "")),
+                        "name": pname,
+                        "price": item.get("price"),
+                        "avg_rating": item.get("avg_rating"),
+                        "image_url": item.get("image_url", ""),
+                        "vertical": item.get("vertical", ""),
+                        "subcategory": item.get("subcategory", ""),
+                    })
+    except (json.JSONDecodeError, TypeError):
+        pass
 
 
 @app.post("/distill", response_model=DistillResponse)
