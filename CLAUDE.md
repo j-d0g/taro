@@ -4,8 +4,8 @@
 
 E-commerce chatbot MVP: LangGraph ReAct agent with 9 SurrealFS tools (filesystem metaphor over SurrealDB's vector, BM25, graph models). Single SurrealDB backend for all data + checkpointing.
 
-- **API code**: `taro-api/src/` (FastAPI + LangGraph agent)
-- **Frontend**: `taro-web/` (placeholder)
+- **API code**: `taro-api/src/` — modular FastAPI (routes in `src/routes/`, agent in `src/agent.py`, models in `src/models.py`, helpers in `src/helpers.py`)
+- **Frontend**: `taro-web/` (vanilla HTML/CSS/JS)
 - **Schema**: `taro-api/schema/schema.surql` + `taro-api/schema/seed.py`
 - **Config**: `taro-api/config/.env`
 - **Run**: `cd taro-api && make serve` | `make studio` | `make seed`
@@ -13,13 +13,15 @@ E-commerce chatbot MVP: LangGraph ReAct agent with 9 SurrealFS tools (filesystem
 
 ## Workflow: 5-Phase Agent Swarm
 
+> This workflow is optimized for AI-assisted development with Claude Code.
+
 For ANY non-trivial task (3+ steps or architectural decisions), follow these phases. Use subagents liberally to keep the main context window clean.
 
 ### 1. Brainstorm
 
 - Spawn a research agent to scan the repo for relevant patterns
 - Propose 2-3 approaches with tradeoffs
-- Write findings to `tasks/ideation.md` with decisions captured
+- Write findings to `docs/internal/ideation.md` with decisions captured
 - One task per subagent for focused execution
 
 ### 2. Plan
@@ -27,7 +29,7 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 - Enter plan mode. Write detailed specs upfront to reduce ambiguity
 - Spawn parallel agents: research (web/docs), codebase (scan files), docs (fetch references)
 - Analyze plan for gaps, edge cases, and dependencies
-- Output plan with checkable tasks, deps, and acceptance criteria to `tasks/todo.md`
+- Output plan with checkable tasks, deps, and acceptance criteria to `docs/internal/todo.md`
 - Check in with user before starting implementation
 
 ### 3. Work
@@ -47,13 +49,13 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 ### 5. Compound
 
 - After ANY correction or bug fix: extract problem, solution, and prevention
-- Update `tasks/lessons.md` with the pattern
+- Update `docs/internal/lessons.md` with the pattern
 - Write rules that prevent the same mistake recurring
 - Future sessions: search lessons first before starting work
 
 ## Self-Improvement Loop
 
-- After ANY correction from the user: update `tasks/lessons.md`
+- After ANY correction from the user: update `docs/internal/lessons.md`
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for this project
@@ -67,12 +69,12 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 
 ## Task Management
 
-1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+1. **Plan First**: Write plan to `docs/internal/todo.md` with checkable items
 2. **Verify Plan**: Check in before starting implementation
 3. **Track Progress**: Mark items complete as you go
 4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `tasks/todo.md`
-6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+5. **Document Results**: Add review section to `docs/internal/todo.md`
+6. **Capture Lessons**: Update `docs/internal/lessons.md` after corrections
 
 ## Core Principles
 
@@ -93,6 +95,8 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 
 ## Key Patterns
 
+- `main.py` is a thin entrypoint (~60 lines) — routes use FastAPI `APIRouter` in `src/routes/`
+- Shared helpers in `src/helpers.py`, agent cache + user context in `src/agent.py`, request/response schemas in `src/models.py`
 - Tools use `async with get_db() as db:` for connection management
 - All search tools return `source_id` to bridge `documents` -> `product` tables for graph traversal
 - Hybrid search uses client-side RRF fusion (two separate queries, not `search::rrf()`)
@@ -105,7 +109,7 @@ For ANY non-trivial task (3+ steps or architectural decisions), follow these pha
 - KNN `<|N|>` operator is BROKEN. Use `ORDER BY vector::similarity::cosine(embedding, $vec) DESC LIMIT N`.
 - BM25 `@1@` operator may return empty. Always add `CONTAINS` fallback path.
 - `INFO FOR DB/TABLE` returns dict directly. Handle with `isinstance` checks for both formats.
-- SurrealSaver is incompatible with 3.0 -- use MemorySaver.
+- SurrealSaver v2.0.0 works but needs `checkpoint` + `write` SCHEMALESS tables pre-created. MemorySaver is the simpler default.
 - After adding graph edges to schema, immediately update graph_traverse EDGE_TYPES and docstring.
 
 ## Integration Testing Rules
