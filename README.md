@@ -15,7 +15,7 @@ pip install -r requirements.txt
 
 # 2. Add your API keys
 cp config/.env.example config/.env
-# Edit config/.env with real keys (ask Jordan for the .env file)
+# Fill in your API keys (see .env.example for required variables)
 
 # 3. Start SurrealDB (in a separate terminal)
 make surrealdb
@@ -25,7 +25,7 @@ make seed
 
 # 5. Run the server
 make serve
-# API live at http://localhost:8000
+# API live at http://localhost:8002
 
 # 6. Open the frontend
 open ../taro-web/index.html
@@ -65,29 +65,29 @@ Then send requests:
 
 ```bash
 # Basic chat
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8002/chat \
   -H 'Content-Type: application/json' \
   -d '{"message": "recommend a hydrating moisturizer"}'
 
 # Multi-turn conversation (reuse thread_id)
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8002/chat \
   -H 'Content-Type: application/json' \
   -d '{"message": "which one is best for sensitive skin?", "thread_id": "THREAD_ID_FROM_ABOVE"}'
 
 # Use a different model
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8002/chat \
   -H 'Content-Type: application/json' \
   -d '{"message": "hello", "model_provider": "anthropic", "model_name": "claude-sonnet-4-20250514"}'
 
 # Use a different prompt persona
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8002/chat \
   -H 'Content-Type: application/json' \
   -d '{"message": "help me with my skincare routine", "prompt_id": "coaching"}'
 ```
 
 ### 3. API Docs (Swagger)
 
-Visit http://localhost:8000/docs for interactive API documentation.
+Visit http://localhost:8002/docs for interactive API documentation.
 
 ---
 
@@ -103,7 +103,7 @@ Every agent run is traced in LangSmith. To view:
    - The LLM's reasoning at each step
    - Token usage and latency
 
-This is 10% of the hackathon judging criteria. Make sure `LANGSMITH_TRACING=true` is set in your `.env`.
+Set `LANGSMITH_TRACING=true` in your `.env` to enable tracing.
 
 ---
 
@@ -125,30 +125,51 @@ The frontend works offline with embedded mock data. When the API is running (`ma
 ## Testing
 
 ```bash
-# Run backend tests (pytest)
+# Run unit tests (pytest, ~1s)
 cd taro-api && make verify
 
-# Run E2E browser tests (Playwright)
-cd taro-web && npx playwright test
+# Quick smoke test (3 queries, ~1 min)
+cd taro-api && make smoke
 
-# Run backend tests directly
-cd taro-api && make test
+# Full adversarial stress test (43 queries, ~20 min)
+cd taro-api && make stress
+
+# E2E browser tests (Playwright)
+cd taro-web && npx playwright test
 ```
 
-- **Backend**: 40 pytest tests covering tools, API endpoints, and agent behavior
+- **Unit**: 93 pytest tests covering tools, API endpoints, and agent behavior
+- **Smoke**: 3 representative queries testing find, graph traversal, and schema awareness
+- **Stress**: 43 adversarial queries with pacing to avoid rate limits
 - **E2E**: 9 Playwright tests covering product browsing, search, detail modal, customer profile, and chat
-- The `make verify` command is also used by the Claude Code Stop hook to gate changes
 
 ---
 
-## API Endpoints
+## API Endpoints (21 total)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/chat` | Send a message to the agent |
+| `POST` | `/chat/stream` | SSE streaming (tool traces + tokens in real time) |
+| `GET` | `/conversations` | List recent conversations |
+| `GET` | `/conversations/{thread_id}` | Get conversation history |
+| `POST` | `/distill` | Distill conversation into user memory |
+| `GET` | `/products` | List products (filterable by vertical, search, brand) |
+| `GET` | `/products/{product_id}` | Product detail with also-bought and reviews |
+| `GET` | `/customers/{customer_id}` | Customer record |
+| `GET` | `/customers/{customer_id}/profile` | Enriched profile with graph-derived data |
+| `GET` | `/customers/{customer_id}/orders` | Order history with product details |
+| `GET` | `/customers/{customer_id}/recommendations` | Graph-based product recommendations |
+| `POST` | `/preferences` | Record preference (cart/keep/remove) |
+| `GET` | `/preferences/{user_id}` | Get user's product preferences |
+| `GET` | `/categories` | Category hierarchy (verticals + subcategories) |
+| `GET` | `/categories/{category_id}` | Category detail with products |
+| `GET` | `/goals` | List wellness/beauty goals |
+| `GET` | `/goals/{goal_id}` | Goal detail with supporting products |
+| `GET` | `/verticals` | Distinct product verticals |
+| `GET` | `/models` | Available LLM providers and models |
+| `GET` | `/prompts` | Available system prompt templates |
 | `GET` | `/health` | Health check |
-| `GET` | `/models` | List available LLM providers and models |
-| `GET` | `/prompts` | List available system prompt templates |
 
 ### POST /chat
 
@@ -169,42 +190,58 @@ cd taro-api && make test
   "reply": "Here are some great moisturizers for you...",
   "thread_id": "user-123",
   "tool_calls": [
-    {"name": "hybrid_search", "args": {"query": "hydrating moisturizer"}}
+    {"name": "find", "args": {"query": "hydrating moisturizer"}}
   ]
 }
 ```
 
 ---
 
-## Search Tools (8 total)
+## SurrealFS Tools (9 total)
 
-The agent decides which tool to use based on the query. This is the core of the project.
+The agent uses a **filesystem metaphor** over SurrealDB -- familiar bash commands (`ls`, `cat`, `find`, `grep`, `tree`) mapped onto multi-model database operations. The agent decides which tool to use based on the query.
 
-| Tool | What it does | When the agent uses it |
-|---|---|---|
-| `hybrid_search` | Vector + BM25 fused via RRF | Default for product queries |
-| `semantic_search` | Vector similarity (HNSW) | "Find something similar to X" |
-| `keyword_search` | BM25 full-text | Exact names, SKUs, specific terms |
-| `graph_traverse` | Walk RELATE edges | Categories, related products, hierarchies |
-| `get_record` | Direct ID lookup | Fetch full details of a known record |
-| `explore_schema` | DB introspection | Understanding available tables/fields |
-| `web_search` | Tavily (lookfantastic.com) | Current promos, fallback when DB is empty |
-| `surrealql_query` | Raw read-only SurrealQL | Aggregations, complex filters, GROUP BY |
+| Tool | Phase | What it does | When the agent uses it |
+|---|---|---|---|
+| `ls` | GATHER | Browse entities at a path | Discover tables, list records |
+| `cat` | GATHER | Read full record details | Inspect a specific product/customer |
+| `tree` | GATHER | Recursive hierarchy view | Explore category trees |
+| `explore_schema` | GATHER | DB introspection | Understanding available tables/fields |
+| `find` | ACT | Hybrid RRF search (vector + BM25) | Default for product queries |
+| `grep` | ACT | BM25 keyword search within scope | Exact names, brands, specific terms |
+| `graph_traverse` | ACT | Walk RELATE edges | Related products, categories, customer history |
+| `surrealql_query` | ACT | Raw read-only SurrealQL | Aggregations, complex filters, GROUP BY |
+| `web_search` | ACT | Tavily (lookfantastic.com) | Current promos, fallback when DB is empty |
 
 ---
 
 ## Makefile Commands
 
 ```bash
-make install     # pip install -r requirements.txt
-make surrealdb   # Start SurrealDB (in-memory, port 8001)
-make seed        # Seed DB with products, categories, FAQs, graph edges
-make serve       # Start FastAPI server (port 8000)
-make studio      # Start LangGraph Studio (port 2024)
-make test        # Run pytest
-make verify      # Run tests (used by Claude Code Stop hook)
-make health      # curl the health endpoint
-make test-chat   # Send a test chat message
+# Setup
+make install      # pip install -r requirements.txt
+make surrealdb    # Start SurrealDB (in-memory)
+make seed         # Seed DB with products, categories, FAQs, graph edges
+
+# Run
+make serve        # Start FastAPI server (port 8002, foreground)
+make restart      # Restart API in background
+make frontend     # Start frontend on :3001
+make studio       # Start LangGraph Studio (port 2024)
+
+# Test
+make verify       # Unit tests (93 tests, ~1s)
+make smoke        # Quick smoke test (3 queries, ~1 min)
+make stress       # Full stress test (43 queries, ~20 min)
+make eval-basic   # Eval suite, basic assertions (10 queries, ~5 min)
+make eval         # Eval suite, DeepEval LLM-as-judge
+
+# Tools
+make health       # API health check
+make test-chat    # Send a test chat message
+make test-distill # Test memory distillation flow
+make conversations # List persisted conversations
+make help         # Show all available commands
 ```
 
 ---
@@ -263,28 +300,36 @@ taro-api/
   requirements.txt         # Python deps
   schema/
     schema.surql           # SurrealDB tables, indexes, relations
-    seed.py                # Seed script (5 products, 5 categories, 2 FAQs, 10 relations)
+    seed.py                # CSV-based seeder (1,890 products + demo customers)
   src/
-    main.py                # FastAPI app
+    main.py                # FastAPI app entry point (~60 lines)
+    agent.py               # Agent cache, user context builder
+    models.py              # Pydantic request/response models
+    helpers.py             # Shared utilities (product ID extraction, SSE formatting)
     graph.py               # LangGraph ReAct agent + model registry
+    judge.py               # Judge feedback loop for refinement
     db.py                  # SurrealDB async connection helper
     state.py               # Agent state (extends MessagesState)
+    routes/
+      chat.py              # POST /chat, POST /chat/stream (SSE streaming)
+      conversations.py     # GET /conversations, POST /distill
+      products.py          # GET /products, GET /products/{id}
+      customers.py         # GET /customers/{id}, /profile, /orders, /recommendations
+      preferences.py       # POST /preferences, GET /preferences/{user_id}
+      catalog.py           # GET /categories, /goals, /verticals
+      config.py            # GET /models, /prompts, /health
     prompts/
       system.py            # File-based prompt loader
-      templates/
-        default.md         # Default system prompt with tool selection guide
-        coaching.md        # Coaching persona
+      templates/           # default.md, coaching.md, harness.md
     tools/
-      __init__.py          # Tool registry (ALL_TOOLS)
-      hybrid_search.py     # Vector + BM25 via RRF
-      semantic_search.py   # HNSW vector similarity
-      keyword_search.py    # BM25 full-text
+      __init__.py          # Tool registry (ALL_TOOLS, 9 tools)
+      fs_tools.py          # SurrealFS core: ls, cat, grep, find, tree
       graph_traverse.py    # RELATE edge traversal
-      get_record.py        # Direct record lookup
       explore_schema.py    # Schema introspection
       web_search.py        # Tavily + SurrealDB caching
       raw_query.py         # Read-only SurrealQL
-  tests/                   # 20 unit tests
+  tests/                   # 93 unit tests
+taro-web/                  # Vanilla HTML/CSS/JS frontend
 ```
 
 ---
@@ -299,4 +344,12 @@ taro-api/
 
 ---
 
-**Taro.ai** @ LangChain x SurrealDB Hackathon, London, March 2026
+## Built at
+
+Built at the [LangChain x SurrealDB Hackathon](https://lu.ma/lcsqwmf3), London, March 2026.
+
+---
+
+## License
+
+[MIT](LICENSE)
