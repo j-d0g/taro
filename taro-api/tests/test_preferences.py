@@ -18,8 +18,9 @@ def client():
     mock_graph_module.DEFAULT_MODEL = "gpt-4o"
 
     with patch.dict(sys.modules, {"graph": mock_graph_module}):
-        if "main" in sys.modules:
-            del sys.modules["main"]
+        for mod in list(sys.modules):
+            if mod in ("main", "agent", "helpers", "models") or mod.startswith("routes."):
+                del sys.modules[mod]
         from main import app
         with TestClient(app) as c:
             yield c
@@ -50,8 +51,8 @@ def test_preference_cart(client):
         "DELETE": [],
         "RELATE": [{"id": "wants:abc"}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.post("/preferences", json={
             "user_id": "charlotte_gong",
             "product_id": "test_product_001",
@@ -69,8 +70,8 @@ def test_preference_remove_with_reason(client):
         "DELETE": [],
         "RELATE": [{"id": "rejected:abc"}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.post("/preferences", json={
             "user_id": "charlotte_gong",
             "product_id": "test_product_001",
@@ -109,8 +110,8 @@ def test_get_preferences(client):
             {"id": "product:toner_1", "name": "Harsh Toner", "price": 8.99},
         ]}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/preferences/charlotte_gong")
     assert response.status_code == 200
     data = response.json()

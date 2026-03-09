@@ -20,8 +20,9 @@ def client():
 
     with patch.dict(sys.modules, {"graph": mock_graph_module}):
         # Force re-import of main with mocked graph
-        if "main" in sys.modules:
-            del sys.modules["main"]
+        for mod in list(sys.modules):
+            if mod in ("main", "agent", "helpers", "models") or mod.startswith("routes."):
+                del sys.modules[mod]
         from main import app
         with TestClient(app) as c:
             yield c
@@ -90,9 +91,9 @@ def test_chat_request_shape(client):
 
     mock_result = {"messages": [AIMessage(content="Here are some great moisturizers.")]}
 
-    import main
-    main._default_agent = AsyncMock()
-    main._default_agent.ainvoke.return_value = mock_result
+    import agent
+    agent._default_agent = AsyncMock()
+    agent._default_agent.ainvoke.return_value = mock_result
 
     response = client.post("/chat", json={"message": "recommend a moisturizer"})
     assert response.status_code == 200
@@ -113,8 +114,8 @@ def test_products_endpoint(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/products")
     assert response.status_code == 200
     data = response.json()
@@ -128,8 +129,8 @@ def test_products_search_param(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/products?search=cleanser")
     assert response.status_code == 200
 
@@ -141,8 +142,8 @@ def test_products_vertical_param(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50, "vertical": "Skincare"},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/products?vertical=Skincare")
     assert response.status_code == 200
 
@@ -158,8 +159,8 @@ def test_get_customer(client):
              "state": "England"}
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/customers/sarah_v")
     assert response.status_code == 200
     data = response.json()
@@ -171,8 +172,8 @@ def test_get_customer(client):
 def test_get_customer_not_found(client):
     """GET /customers/{id} returns error for missing customer."""
     mock = _mock_db({"SELECT * FROM customer": []})
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/customers/nonexistent")
     assert response.status_code == 200
     data = response.json()
@@ -190,8 +191,8 @@ def test_get_customer_orders(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ]}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/customers/sarah_v/orders")
     assert response.status_code == 200
     data = response.json()
@@ -209,8 +210,8 @@ def test_get_customer_recommendations(client):
             {"id": "product:serum_1", "name": "Retinol Serum", "price": 14.99, "avg_rating": 4.8},
         ]}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/customers/sarah_v/recommendations")
     assert response.status_code == 200
     data = response.json()
@@ -230,8 +231,8 @@ def test_list_categories(client):
             {"child": "category:skincare__serums", "parent": "category:skincare"},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/categories")
     assert response.status_code == 200
     data = response.json()
@@ -255,8 +256,8 @@ def test_get_category(client):
             {"id": "category:skincare__serums", "name": "Serums"},
         ]}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/categories/skincare")
     assert response.status_code == 200
     data = response.json()
@@ -272,8 +273,8 @@ def test_list_goals(client):
             {"id": "goal:clear_skin", "name": "Clear Skin", "description": "Achieve clear complexion", "vertical": "Skincare"},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/goals")
     assert response.status_code == 200
     data = response.json()
@@ -292,8 +293,8 @@ def test_get_goal(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50, "avg_rating": 4.7},
         ]}],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/goals/clear_skin")
     assert response.status_code == 200
     data = response.json()
@@ -305,8 +306,8 @@ def test_get_goal(client):
 def test_get_goal_not_found(client):
     """GET /goals/{id} returns error for missing goal."""
     mock = _mock_db({"SELECT * FROM goal": []})
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/goals/nonexistent")
     assert response.status_code == 200
     data = response.json()
@@ -320,8 +321,8 @@ def test_products_pagination(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/products?limit=10&offset=5")
     assert response.status_code == 200
     data = response.json()
@@ -335,8 +336,8 @@ def test_products_brand_filter(client):
             {"id": "product:cleanser_1", "name": "CeraVe Cleanser", "price": 11.50, "brand": "CeraVe"},
         ],
     })
-    import main
-    with patch.object(main, "get_db", mock):
+    import db
+    with patch.object(db, "get_db", mock):
         response = client.get("/products?brand=CeraVe")
     assert response.status_code == 200
     data = response.json()

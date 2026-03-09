@@ -19,8 +19,9 @@ def client():
     mock_graph_module.DEFAULT_MODEL = "gpt-4o"
 
     with patch.dict(sys.modules, {"graph": mock_graph_module}):
-        if "main" in sys.modules:
-            del sys.modules["main"]
+        for mod in list(sys.modules):
+            if mod in ("main", "agent", "helpers", "models") or mod.startswith("routes."):
+                del sys.modules[mod]
         from main import app
         with TestClient(app) as c:
             yield c
@@ -29,7 +30,7 @@ def client():
 def test_stream_endpoint_exists(client):
     """POST /chat/stream returns 200, not 404."""
     # Mock agent with astream_events
-    import main
+    import agent
 
     async def mock_astream_events(input_msg, config, version="v2"):
         # Simulate: tool_start -> tool_end -> llm stream -> end
@@ -60,7 +61,7 @@ def test_stream_endpoint_exists(client):
 
     mock_agent = MagicMock()
     mock_agent.astream_events = mock_astream_events
-    main._default_agent = mock_agent
+    agent._default_agent = mock_agent
 
     response = client.post(
         "/chat/stream",
@@ -72,7 +73,7 @@ def test_stream_endpoint_exists(client):
 
 def test_stream_emits_sse_events(client):
     """SSE stream contains tool_start, tool_end, token, and done events."""
-    import main
+    import agent
 
     async def mock_astream_events(input_msg, config, version="v2"):
         yield {
@@ -96,7 +97,7 @@ def test_stream_emits_sse_events(client):
 
     mock_agent = MagicMock()
     mock_agent.astream_events = mock_astream_events
-    main._default_agent = mock_agent
+    agent._default_agent = mock_agent
 
     response = client.post(
         "/chat/stream",
@@ -136,7 +137,7 @@ def test_stream_request_validation(client):
 
 def test_stream_with_user_id(client):
     """Streaming endpoint injects user context when user_id is provided."""
-    import main
+    import agent
 
     captured_input = {}
 
@@ -151,7 +152,7 @@ def test_stream_with_user_id(client):
 
     mock_agent = MagicMock()
     mock_agent.astream_events = mock_astream_events
-    main._default_agent = mock_agent
+    agent._default_agent = mock_agent
 
     # Mock DB to return a customer
     mock_db = AsyncMock()
@@ -166,7 +167,8 @@ def test_stream_with_user_id(client):
     async def mock_get_db():
         yield mock_db
 
-    with patch.object(main, "get_db", mock_get_db):
+    import db
+    with patch.object(db, "get_db", mock_get_db):
         response = client.post(
             "/chat/stream",
             json={"message": "hi", "user_id": "charlotte_gong"},
@@ -181,7 +183,7 @@ def test_stream_with_user_id(client):
 
 def test_stream_error_handling(client):
     """Stream emits error event on agent failure."""
-    import main
+    import agent
 
     async def mock_astream_events(input_msg, config, version="v2"):
         raise RuntimeError("LLM connection failed")
@@ -189,7 +191,7 @@ def test_stream_error_handling(client):
 
     mock_agent = MagicMock()
     mock_agent.astream_events = mock_astream_events
-    main._default_agent = mock_agent
+    agent._default_agent = mock_agent
 
     response = client.post(
         "/chat/stream",
@@ -203,7 +205,7 @@ def test_stream_error_handling(client):
 
 def test_stream_multiple_tools(client):
     """Stream handles multiple sequential tool calls."""
-    import main
+    import agent
 
     async def mock_astream_events(input_msg, config, version="v2"):
         for i, tool_name in enumerate(["find", "cat", "grep"]):
@@ -228,7 +230,7 @@ def test_stream_multiple_tools(client):
 
     mock_agent = MagicMock()
     mock_agent.astream_events = mock_astream_events
-    main._default_agent = mock_agent
+    agent._default_agent = mock_agent
 
     response = client.post(
         "/chat/stream",
@@ -245,7 +247,7 @@ def test_stream_multiple_tools(client):
 
 def test_stream_product_extraction(client):
     """Stream extracts product IDs from tool output '→ /products/{id}' pattern."""
-    import main
+    import agent
 
     # Tool output uses the standard → /products/{id} format (same as find/grep/graph_traverse)
     tool_output = (
@@ -278,7 +280,7 @@ def test_stream_product_extraction(client):
 
     mock_agent = MagicMock()
     mock_agent.astream_events = mock_astream_events
-    main._default_agent = mock_agent
+    agent._default_agent = mock_agent
 
     # Mock DB to return product details when fetched
     mock_db = AsyncMock()
@@ -296,7 +298,8 @@ def test_stream_product_extraction(client):
     async def mock_get_db():
         yield mock_db
 
-    with patch.object(main, "get_db", mock_get_db):
+    import db
+    with patch.object(db, "get_db", mock_get_db):
         response = client.post(
             "/chat/stream",
             json={"message": "recommend a moisturizer"},
