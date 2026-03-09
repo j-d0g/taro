@@ -138,7 +138,7 @@ cd taro-api && make stress
 cd taro-web && npx playwright test
 ```
 
-- **Unit**: 93 pytest tests covering tools, API endpoints, and agent behavior
+- **Unit**: 89 pytest tests covering tools, API endpoints, and agent behavior
 - **Smoke**: 3 representative queries testing find, graph traversal, and schema awareness
 - **Stress**: 43 adversarial queries with pacing to avoid rate limits
 - **E2E**: 9 Playwright tests covering product browsing, search, detail modal, customer profile, and chat
@@ -179,6 +179,7 @@ cd taro-web && npx playwright test
 |---|---|---|---|
 | `message` | string | *(required)* | User message |
 | `thread_id` | string | auto-generated | Conversation thread ID (reuse for multi-turn) |
+| `user_id` | string | `null` | Customer ID for personalized context (e.g. `"diego_carvalho"`) |
 | `model_provider` | string | env `LLM_PROVIDER` | `openai`, `anthropic`, or `google` |
 | `model_name` | string | env `LLM_MODEL` | Model identifier |
 | `prompt_id` | string | `"default"` | System prompt template ID |
@@ -191,6 +192,9 @@ cd taro-web && npx playwright test
   "thread_id": "user-123",
   "tool_calls": [
     {"name": "find", "args": {"query": "hydrating moisturizer"}}
+  ],
+  "products": [
+    {"id": "abc123", "name": "CeraVe Moisturising Cream", "price": 12.50, "image_url": "..."}
   ]
 }
 ```
@@ -230,7 +234,7 @@ make frontend     # Start frontend on :3001
 make studio       # Start LangGraph Studio (port 2024)
 
 # Test
-make verify       # Unit tests (93 tests, ~1s)
+make verify       # Unit tests (89 tests, ~1s)
 make smoke        # Quick smoke test (3 queries, ~1 min)
 make stress       # Full stress test (43 queries, ~20 min)
 make eval-basic   # Eval suite, basic assertions (10 queries, ~5 min)
@@ -328,7 +332,7 @@ taro-api/
       explore_schema.py    # Schema introspection
       web_search.py        # Tavily + SurrealDB caching
       raw_query.py         # Read-only SurrealQL
-  tests/                   # 93 unit tests
+  tests/                   # 89 unit tests
 taro-web/                  # Vanilla HTML/CSS/JS frontend
 ```
 

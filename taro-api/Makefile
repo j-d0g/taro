@@ -18,7 +18,7 @@ help:
 	@echo "    make studio         Start LangGraph Studio"
 	@echo ""
 	@echo "  Test"
-	@echo "    make verify         Unit tests (80 tests, ~1s)"
+	@echo "    make verify         Unit tests (89 tests, ~1s)"
 	@echo "    make smoke          Quick smoke test (3 queries, ~1min)"
 	@echo "    make stress         Full stress test (43 queries, ~20min)"
 	@echo "    make eval-basic     Eval suite, basic assertions (10 queries, ~5min)"
@@ -62,7 +62,7 @@ surrealdb:
 
 # Health check
 health:
-	curl -s http://localhost:8000/health | python -m json.tool
+	curl -s http://localhost:8002/health | python -m json.tool
 
 # Test chat
 test-chat:

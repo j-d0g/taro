@@ -38,7 +38,7 @@ def test_raw_query_allows_reads():
         assert not BLOCKED_KEYWORDS.search(query), f"Should allow: {query}"
 
 
-def test_hybrid_search_rrf_fusion():
+def test_rrf_fusion():
     """Test the RRF fusion function directly."""
     from tools.fs_tools import _rrf_fuse
 
