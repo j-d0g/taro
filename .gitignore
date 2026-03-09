@@ -45,3 +45,9 @@ node_modules/
 
 # Archive
 archive/
+
+# Raw datasets (large CSVs)
+Datasets/
+
+# SurrealDB binary
+surrealfs
