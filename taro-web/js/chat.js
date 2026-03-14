@@ -120,29 +120,130 @@ async function handlePreference(productId, action, btnEl) {
   const card = document.getElementById(`chat-product-${productId}`);
   if (!card) return;
 
-  // Visual feedback immediately
+  if (action === 'remove') {
+    showRemoveReasonPrompt(productId, card, btnEl);
+    return;
+  }
+
+  // Visual feedback immediately for cart / keep
   if (action === 'cart') {
     card.classList.add('pref-carted');
     btnEl.innerHTML = '&#10003;';
   } else if (action === 'keep') {
     card.classList.add('pref-saved');
     btnEl.innerHTML = '&#10003;';
-  } else if (action === 'remove') {
-    card.classList.add('pref-removed');
-    setTimeout(() => card.style.display = 'none', 300);
   }
-
-  // Disable all action buttons on this card
   card.querySelectorAll('.pref-btn').forEach(b => b.disabled = true);
 
-  // Send to backend
-  const result = await sendPreference(productId, action);
+  const result = await sendPreference(productId, action, null, threadId);
   if (!result || !result.success) {
-    // Revert on failure
     card.className = 'chat-product-card';
-    card.style.display = '';
+    card.querySelectorAll('.pref-btn').forEach(b => b.disabled = false);
+    if (action === 'cart') btnEl.innerHTML = '&#128722;';
+    if (action === 'keep') btnEl.innerHTML = '&#128278;';
+  } else if (action === 'cart') {
+    refreshCartFromApi();
+  }
+}
+
+let _removePending = null;
+
+function showRemoveReasonPrompt(productId, card, btnEl) {
+  const overlay = document.getElementById('reasonPromptOverlay');
+  const input = document.getElementById('reasonPromptInput');
+  if (!overlay || !input) return;
+  _removePending = { productId, card, btnEl };
+  input.value = '';
+  overlay.classList.add('open');
+  input.focus();
+}
+
+function closeRemoveReasonPrompt() {
+  const overlay = document.getElementById('reasonPromptOverlay');
+  if (overlay) overlay.classList.remove('open');
+  _removePending = null;
+}
+
+async function confirmRemovePreference(reason) {
+  if (!_removePending) return;
+  const { productId, card, btnEl } = _removePending;
+  closeRemoveReasonPrompt();
+  card.querySelectorAll('.pref-btn').forEach(b => b.disabled = true);
+  card.classList.add('pref-removed');
+  const result = await sendPreference(productId, 'remove', reason || null, threadId);
+  if (!result || !result.success) {
+    card.className = 'chat-product-card';
     card.querySelectorAll('.pref-btn').forEach(b => b.disabled = false);
   }
+  setTimeout(() => { card.style.display = 'none'; }, 300);
+}
+
+function initRemoveReasonPrompt() {
+  const overlay = document.getElementById('reasonPromptOverlay');
+  const input = document.getElementById('reasonPromptInput');
+  const skip = document.getElementById('reasonPromptSkip');
+  const submit = document.getElementById('reasonPromptSubmit');
+  if (!overlay || !skip || !submit) return;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRemoveReasonPrompt(); });
+  skip.addEventListener('click', () => confirmRemovePreference(null));
+  submit.addEventListener('click', () => confirmRemovePreference((input && input.value.trim()) || null));
+  if (input) input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirmRemovePreference(input.value.trim() || null);
+    if (e.key === 'Escape') closeRemoveReasonPrompt();
+  });
+}
+
+// ── Cart drawer ─────────────────────────────────────────
+function toggleCartDrawer() {
+  const overlay = document.getElementById('cartDrawerOverlay');
+  const drawer = document.getElementById('cartDrawer');
+  if (!overlay || !drawer) return;
+  overlay.classList.toggle('open');
+  drawer.classList.toggle('open');
+}
+
+async function refreshCartFromApi() {
+  const userId = typeof DEMO_CUSTOMER_ID !== 'undefined' ? DEMO_CUSTOMER_ID : null;
+  const prefs = await fetchPreferences(userId);
+  const cart = prefs.cart || [];
+  const countEl = document.getElementById('cartCount');
+  const emptyEl = document.getElementById('cartEmpty');
+  const listEl = document.getElementById('cartList');
+  if (countEl) countEl.textContent = cart.length;
+  if (listEl) {
+    listEl.innerHTML = cart.map(p => {
+      const name = escapeHtml(p.name || p.id);
+      const price = (p.price != null ? Number(p.price) : 0).toFixed(2);
+      const img = p.image_url ? `<img class="cart-item-thumb" src="${escapeHtml(p.image_url)}" alt="" loading="lazy" />` : '<div class="cart-item-thumb cart-item-thumb-placeholder">&#128722;</div>';
+      return `
+      <li data-product-id="${escapeHtml(String(p.id))}">
+        ${img}
+        <div class="cart-item-info">
+          <span class="cart-item-name">${name}</span>
+          <span class="cart-item-price">£${price}</span>
+          <a class="cart-item-link" href="#">View product</a>
+        </div>
+      </li>
+    `}).join('');
+    listEl.querySelectorAll('.cart-item-link').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const li = a.closest('li');
+        const id = li && li.getAttribute('data-product-id');
+        if (id && typeof openProductDetail === 'function') {
+          toggleCartDrawer();
+          openProductDetail(id);
+        }
+      });
+    });
+  }
+  if (emptyEl) emptyEl.style.display = cart.length ? 'none' : 'block';
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
 }
 
 // ── Add message to chat ────────────────────────────────

@@ -52,12 +52,11 @@ def get_llm(provider: str = DEFAULT_PROVIDER, model: str = DEFAULT_MODEL, temper
     provider = provider.lower()
 
     if provider == "openai":
-        # Enable reasoning summaries for models that support it (GPT-5.x)
-        reasoning_effort = os.getenv("REASONING_EFFORT", "low")
+        # reasoning_effort is only supported on /v1/responses, not /v1/chat/completions.
+        # Omit it so gpt-5.4 and other models work with the default endpoint.
         return ChatOpenAI(
             model=model,
             temperature=temperature,
-            reasoning_effort=reasoning_effort,
         )
 
     if provider == "anthropic":
@@ -96,19 +95,27 @@ def build_graph(model_provider: str = None, model_name: str = None, temperature:
     )
 
     if use_checkpointer:
-        try:
-            db_config = get_db_config()
-            checkpointer = SurrealSaver(
-                url=db_config["url"],
-                namespace=db_config["namespace"],
-                database=db_config["database"],
-                user=db_config["user"],
-                password=db_config["password"],
-            )
-            logger.info("Using SurrealSaver for persistent checkpoints")
-        except Exception as e:
-            logger.warning(f"SurrealSaver failed, falling back to MemorySaver: {e}")
+        # SurrealSaver has compatibility issues with SurrealDB 3.0 checkpoint retrieval
+        # (e.g. "string indices must be integers, not 'str'"). Use MemorySaver so chat works.
+        # Conversation history is still persisted via routes/chat.py -> conversation table.
+        use_surreal_saver = os.getenv("USE_SURREAL_SAVER", "").lower() == "true"
+        if use_surreal_saver:
+            try:
+                db_config = get_db_config()
+                checkpointer = SurrealSaver(
+                    url=db_config["url"],
+                    namespace=db_config["namespace"],
+                    database=db_config["database"],
+                    user=db_config["user"],
+                    password=db_config["password"],
+                )
+                logger.info("Using SurrealSaver for persistent checkpoints")
+            except Exception as e:
+                logger.warning(f"SurrealSaver failed, falling back to MemorySaver: {e}")
+                checkpointer = MemorySaver()
+        else:
             checkpointer = MemorySaver()
+            logger.info("Using MemorySaver for checkpoints (conversation persisted to SurrealDB via conversation table)")
     else:
         checkpointer = None
 

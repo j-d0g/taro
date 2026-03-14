@@ -102,6 +102,35 @@
   </div>
 </div>
 
+<!-- ═══ Cart (floating badge + drawer) ═══════════════════ -->
+<div class="cart-badge" id="cartBadge" onclick="toggleCartDrawer()" title="View cart">
+  <span class="cart-icon">&#128722;</span>
+  <span class="cart-count" id="cartCount">0</span>
+</div>
+<div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="toggleCartDrawer()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-drawer-header">
+    <h3>Cart</h3>
+    <button class="modal-close" onclick="toggleCartDrawer()">&#10005;</button>
+  </div>
+  <div class="cart-drawer-body" id="cartDrawerBody">
+    <p class="cart-empty" id="cartEmpty">Your cart is empty.</p>
+    <ul class="cart-list" id="cartList"></ul>
+  </div>
+</div>
+
+<!-- ═══ Remove reason prompt (optional) ════════════════ -->
+<div class="reason-prompt-overlay" id="reasonPromptOverlay">
+  <div class="reason-prompt" id="reasonPrompt">
+    <p class="reason-prompt-title">What didn't you like? (optional)</p>
+    <input type="text" class="reason-prompt-input" id="reasonPromptInput" placeholder="e.g. too expensive, wrong type..." maxlength="200" />
+    <div class="reason-prompt-actions">
+      <button type="button" class="reason-prompt-skip" id="reasonPromptSkip">Skip</button>
+      <button type="button" class="reason-prompt-submit" id="reasonPromptSubmit">Submit</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ Chat Bubble ═════════════════════════════════════ -->
 <div class="chat-bubble" id="chatBubble" onclick="toggleChat()">&#128172;</div>
 

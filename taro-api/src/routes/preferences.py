@@ -6,6 +6,7 @@ from loguru import logger
 import db
 from helpers import str_id
 from models import PreferenceRequest
+from routes.chat import append_preference_context
 
 
 router = APIRouter()
@@ -23,6 +24,7 @@ async def set_preference(request: PreferenceRequest):
     if not edge_type:
         return {"error": f"Invalid action: {request.action}. Use cart, keep, or remove.", "success": False}
 
+    product_name = None
     async with db.get_db() as conn:
         # Remove any existing preference edges for this user-product pair
         for et in edge_map.values():
@@ -42,6 +44,21 @@ async def set_preference(request: PreferenceRequest):
                 f"RELATE customer:`{request.user_id}`->{edge_type}->product:`{request.product_id}` "
                 f"SET added_at = time::now()"
             )
+
+        # Optionally append preference context to conversation so agent adapts in-session
+        if request.thread_id:
+            try:
+                prod = await conn.query(
+                    f"SELECT name FROM product:{request.product_id}"
+                )
+                if prod and isinstance(prod[0], dict):
+                    product_name = prod[0].get("name")
+                await append_preference_context(
+                    conn, request.thread_id, request.user_id,
+                    request.product_id, product_name, request.action, request.reason,
+                )
+            except Exception as e:
+                logger.warning(f"Could not append preference context to thread {request.thread_id}: {e}")
 
     logger.info(f"Preference: {request.user_id} -> {request.action} -> {request.product_id}")
     return {"action": request.action, "product_id": request.product_id, "success": True}

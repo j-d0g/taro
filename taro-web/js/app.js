@@ -3,6 +3,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (typeof initRemoveReasonPrompt === 'function') initRemoveReasonPrompt();
   // Bind chat keyboard shortcuts
   initChatKeyboard();
 
@@ -26,6 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const el = document.getElementById('modelName');
       if (el && data.default_model) el.textContent = data.default_model;
     } catch (_) {}
+    // Load cart count from preferences so badge is correct after refresh
+    if (typeof refreshCartFromApi === 'function' && typeof DEMO_CUSTOMER_ID !== 'undefined') {
+      refreshCartFromApi();
+    }
   }
   console.log(
     '%c Taro.ai %c Powered by SurrealDB ',

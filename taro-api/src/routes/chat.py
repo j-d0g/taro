@@ -67,6 +67,42 @@ async def _save_conversation(conn, thread_id: str, user_id: str | None, user_msg
         )
 
 
+async def append_preference_context(conn, thread_id: str, user_id: str | None, product_id: str, product_name: str | None, action: str, reason: str | None) -> None:
+    """Append a single preference-update message to the conversation so the agent sees it on next turn."""
+    import datetime
+    name = product_name or product_id
+    if action == "cart":
+        content = f"[Preference: User added {name} to cart — they like this direction.]"
+    elif action == "keep":
+        content = f"[Preference: User saved {name} for later — interested.]"
+    else:
+        part = f"[Preference: User removed {name} from recommendations — avoid similar."
+        if reason:
+            part += f" Reason: {reason[:100]}."
+        part += "]"
+        content = part
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    new_msg = {"role": "user", "content": content, "timestamp": now}
+    existing = await conn.query(
+        "SELECT id, messages FROM conversation WHERE thread_id = $tid",
+        {"tid": thread_id},
+    )
+    if existing and isinstance(existing[0], dict) and "id" in existing[0]:
+        old_messages = existing[0].get("messages", [])
+        all_messages = old_messages + [new_msg]
+        conv_id = str(existing[0]["id"])
+        await conn.query(
+            f"UPDATE {conv_id} SET messages = $msgs, updated_at = time::now()",
+            {"msgs": all_messages},
+        )
+    else:
+        await conn.query(
+            "CREATE conversation SET thread_id = $tid, user_id = $uid, "
+            "messages = $msgs, created_at = time::now(), updated_at = time::now()",
+            {"tid": thread_id, "uid": user_id, "msgs": [new_msg]},
+        )
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Send a message to the chatbot."""
@@ -77,8 +113,27 @@ async def chat(request: ChatRequest):
 
         config = {"configurable": {"thread_id": request.thread_id}}
 
+        # Load persisted history for this thread (if any) and prepend as a short summary.
+        history_prefix = ""
+        try:
+            async with db.get_db() as conn:
+                past = await _load_conversation(conn, request.thread_id)
+            if past:
+                # Build a compact textual summary of the last few turns
+                lines = []
+                for m in past[-10:]:
+                    role = m.get("role", "")
+                    content = str(m.get("content", ""))[:200]
+                    if content:
+                        lines.append(f"{role}: {content}")
+                if lines:
+                    history_prefix = "Previous conversation:\n" + "\n".join(lines) + "\n\n"
+        except Exception as hist_err:
+            logger.warning(f"Failed to load persisted conversation for thread {request.thread_id}: {hist_err}")
+
         message_content = await build_message_content(request.message, request.user_id)
-        input_msg = {"messages": [HumanMessage(content=message_content)]}
+        full_content = history_prefix + message_content
+        input_msg = {"messages": [HumanMessage(content=full_content)]}
 
         result = await agent.ainvoke(input_msg, config=config)
 
@@ -149,8 +204,26 @@ async def chat_stream(request: ChatRequest):
     agent = get_agent(request.model_provider, request.model_name, request.prompt_id)
     config = {"configurable": {"thread_id": request.thread_id}}
 
+    # Load persisted history for this thread (if any) and prepend as a short summary.
+    history_prefix = ""
+    try:
+        async with db.get_db() as conn:
+            past = await _load_conversation(conn, request.thread_id)
+        if past:
+            lines = []
+            for m in past[-10:]:
+                role = m.get("role", "")
+                content = str(m.get("content", ""))[:200]
+                if content:
+                    lines.append(f"{role}: {content}")
+            if lines:
+                history_prefix = "Previous conversation:\n" + "\n".join(lines) + "\n\n"
+    except Exception as hist_err:
+        logger.warning(f"Failed to load persisted conversation for stream thread {request.thread_id}: {hist_err}")
+
     message_content = await build_message_content(request.message, request.user_id)
-    input_msg = {"messages": [HumanMessage(content=message_content)]}
+    full_content = history_prefix + message_content
+    input_msg = {"messages": [HumanMessage(content=full_content)]}
 
     async def event_generator():
         tool_calls = []
@@ -271,7 +344,7 @@ async def chat_stream(request: ChatRequest):
             try:
                 async with db.get_db() as conn:
                     latest = await conn.query(
-                        "SELECT insight, pattern_type FROM learned_pattern "
+                        "SELECT insight, pattern_type, created_at FROM learned_pattern "
                         "WHERE created_at >= type::datetime($ts) "
                         "ORDER BY created_at DESC LIMIT 1",
                         {"ts": turn_start},

@@ -100,6 +100,33 @@ async def build_message_content(message: str, user_id: str | None) -> str:
                     review_parts.append(f"{score}/5 ({sentiment}): \"{snippet}\"")
                 parts.append(f"Their reviews: {'; '.join(review_parts)}")
 
+            # Explicit preferences via graph edges
+            pref_rows = await conn.query(
+                "SELECT "
+                "->wants->product.{id, name} AS wants, "
+                "->interested_in->product.{id, name} AS saved, "
+                "->rejected->product.{id, name} AS rejected "
+                f"FROM customer:{user_id}"
+            )
+            prefs = pref_rows[0] if pref_rows else {}
+
+            def _names(items):
+                names = []
+                if isinstance(items, list):
+                    for it in items:
+                        if isinstance(it, dict):
+                            n = it.get("name")
+                            if n:
+                                names.append(str(n))
+                return names
+
+            likes = _names(prefs.get("wants", [])) + _names(prefs.get("saved", []))
+            dislikes = _names(prefs.get("rejected", []))
+            if likes:
+                parts.append(f"Likes: {', '.join(likes[:6])}")
+            if dislikes:
+                parts.append(f"Not interested in: {', '.join(dislikes[:6])}")
+
             # Graph hint for deeper exploration
             parts.append(f"Graph entry: cat /users/{user_id} or graph_traverse('customer:{user_id}', 'customer_history')")
 

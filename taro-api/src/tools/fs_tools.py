@@ -56,6 +56,7 @@ ROUTES = [
     (re.compile(r"^/?$"), "_root"),
     (re.compile(r"^/users/?$"), "_list_users"),
     (re.compile(r"^/users/([^/]+)/orders/?$"), "_list_user_orders"),
+    (re.compile(r"^/users/([^/]+)/preferences/?$"), "_list_user_preferences"),
     (re.compile(r"^/users/([^/]+)/?$"), "_show_user"),
     (re.compile(r"^/products/?$"), "_list_products"),
     (re.compile(r"^/products/([^/]+)/?$"), "_show_product"),
@@ -226,6 +227,34 @@ async def _handle_list_user_orders(db, user_id, verbose=False):
             pname = p.get("name", "?")
             pprice = p.get("price", 0)
             lines.append(f"    → {pid} ({pname}, £{pprice:.2f})")
+    return "\n".join(lines)
+
+
+async def _handle_list_user_preferences(db, user_id, verbose=False):
+    result = await db.query(
+        "SELECT "
+        "->wants->product.{id, name, price} AS cart, "
+        "->interested_in->product.{id, name, price} AS saved, "
+        "->rejected->product.{id, name, price} AS rejected "
+        f"FROM customer:{user_id}"
+    )
+    row = result[0] if result else {}
+    lines = [f"Preferences for customer:{user_id}:"]
+
+    def _line_list(items, prefix):
+        out = []
+        for p in items or []:
+            pid = str(p.get("id", "")).replace("product:", "")
+            name = p.get("name", "?")
+            price = p.get("price", 0)
+            out.append(f"  {prefix}: {pid}  {name} — £{price:.2f}")
+        return out
+
+    lines.extend(_line_list(row.get("cart"), "cart"))
+    lines.extend(_line_list(row.get("saved"), "saved"))
+    lines.extend(_line_list(row.get("rejected"), "rejected"))
+    if len(lines) == 1:
+        lines.append("  (no cart, saved, or rejected items)")
     return "\n".join(lines)
 
 
@@ -518,6 +547,7 @@ _HANDLERS = {
     "_list_users": _handle_list_users,
     "_show_user": _handle_show_user,
     "_list_user_orders": _handle_list_user_orders,
+    "_list_user_preferences": _handle_list_user_preferences,
     "_list_products": _handle_list_products,
     "_show_product": _handle_show_product,
     "_list_categories": _handle_list_categories,
@@ -549,6 +579,7 @@ async def ls(path: str = "/") -> str:
       /users/        → List all users with profile types
       /users/{id}    → User summary + link to their orders
       /users/{id}/orders/ → User's order history with product names
+      /users/{id}/preferences/ → User's cart, saved, and rejected products
       /products/     → List all products with prices
       /products/{id} → Product summary + related products
       /categories/   → List all categories
@@ -566,7 +597,7 @@ async def ls(path: str = "/") -> str:
     if not match:
         return (
             f"Invalid path: {path}\n"
-            "Valid paths: /, /users/, /users/{{id}}, /users/{{id}}/orders/, "
+            "Valid paths: /, /users/, /users/{{id}}, /users/{{id}}/orders/, /users/{{id}}/preferences/, "
             "/products/, /products/{{id}}, /categories/, /categories/{{id}}/, "
             "/goals/, /goals/{{id}}/, /ingredients/, /ingredients/{{id}}/"
         )
@@ -847,11 +878,28 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
     m = re.match(r"^/users/([^/]+)$", path)
     if m:
         uid = m.group(1)
+        # Count orders for this customer
         result = await db.query(
             f"SELECT count() AS c FROM order WHERE <-placed<-customer CONTAINS customer:{uid} GROUP ALL"
         )
         count = result[0].get("c", 0) if result else 0
-        return [(f"orders/ ({count})", f"/users/{uid}/orders", True)]
+        # Preferences summary (cart/saved/rejected)
+        pref_rows = await db.query(
+            "SELECT "
+            "array::len(->wants->product) AS cart_count, "
+            "array::len(->interested_in->product) AS saved_count, "
+            "array::len(->rejected->product) AS rejected_count "
+            f"FROM customer:{uid}"
+        )
+        prefs = pref_rows[0] if pref_rows else {}
+        cart_c = prefs.get("cart_count", 0) or 0
+        saved_c = prefs.get("saved_count", 0) or 0
+        rej_c = prefs.get("rejected_count", 0) or 0
+        children = [
+            (f"orders/ ({count})", f"/users/{uid}/orders", True),
+            (f"preferences/ (cart:{cart_c}, saved:{saved_c}, rejected:{rej_c})", f"/users/{uid}/preferences", True),
+        ]
+        return children
 
     m = re.match(r"^/users/([^/]+)/orders$", path)
     if m:
@@ -867,6 +915,34 @@ async def _tree_children(db, path: str) -> list[tuple[str, str, bool]]:
             total = o.get("total", 0)
             status = o.get("status", "?")
             children.append((f"{oid}  {date} £{total:.2f} [{status}]", f"/{oid}", True))
+        return children
+
+    m = re.match(r"^/users/([^/]+)/preferences$", path)
+    if m:
+        uid = m.group(1)
+        result = await db.query(
+            "SELECT "
+            "->wants->product.{id, name, price} AS cart, "
+            "->interested_in->product.{id, name, price} AS saved, "
+            "->rejected->product.{id, name, price} AS rejected "
+            f"FROM customer:{uid}"
+        )
+        row = result[0] if result else {}
+        def _label_list(items, prefix):
+            labels = []
+            for p in items or []:
+                pid = str(p.get("id", "")).replace("product:", "")
+                name = p.get("name", "?")
+                price = p.get("price", 0)
+                labels.append((f"{prefix}: {pid}  {name} — £{price:.2f}", f"/products/{pid}", False))
+            return labels
+
+        children = []
+        children.extend(_label_list(row.get("cart"), "cart"))
+        children.extend(_label_list(row.get("saved"), "saved"))
+        children.extend(_label_list(row.get("rejected"), "rejected"))
+        if not children:
+            return [("(no preferences)", f"/users/{uid}", False)]
         return children
 
     m = re.match(r"^/order:([^/]+)$", path)

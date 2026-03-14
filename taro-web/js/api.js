@@ -243,9 +243,21 @@ async function sendChatMessageStream(message, threadId, onEvent) {
   }
 }
 
-// ── Preference endpoint ───────────────────────────────
+// ── Preferences (cart / saved / rejected) ───────────────
 
-async function sendPreference(productId, action, reason = null) {
+async function fetchPreferences(userId) {
+  if (!userId) return { cart: [], saved: [], rejected: [] };
+  try {
+    const res = await fetch(`${API_BASE}/preferences/${userId}`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('fetchPreferences failed:', err.message);
+    return { cart: [], saved: [], rejected: [] };
+  }
+}
+
+async function sendPreference(productId, action, reason = null, threadId = null) {
   const userId = typeof DEMO_CUSTOMER_ID !== 'undefined' ? DEMO_CUSTOMER_ID : null;
   if (!userId) {
     console.warn('sendPreference: no user ID');
@@ -254,6 +266,7 @@ async function sendPreference(productId, action, reason = null) {
   try {
     const body = { user_id: userId, product_id: productId, action };
     if (reason) body.reason = reason;
+    if (threadId) body.thread_id = threadId;
     const res = await fetch(`${API_BASE}/preferences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

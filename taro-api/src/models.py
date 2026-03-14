@@ -39,6 +39,7 @@ class PreferenceRequest(BaseModel):
     product_id: str
     action: str  # "cart", "keep", "remove"
     reason: Optional[str] = None
+    thread_id: Optional[str] = None  # if set, append preference context so agent adapts in-session
 
 
 AVAILABLE_MODELS = {

@@ -26,6 +26,16 @@ PATTERNS = {
         "query": "SELECT <-supports_goal<-product.{id, name, price, avg_rating, subcategory} AS results FROM {start}",
         "label": "Products supporting this goal",
     },
+    "customer_preferences": {
+        "query": (
+            "SELECT "
+            "->wants->product.{id, name, price} AS cart, "
+            "->interested_in->product.{id, name, price} AS saved, "
+            "->rejected->product.{id, name, price} AS rejected "
+            "FROM {start}"
+        ),
+        "label": "Customer preferences (cart, saved, rejected) — use to avoid recommending rejected items",
+    },
 }
 
 
@@ -47,17 +57,18 @@ async def graph_traverse(start_id: str, pattern: str) -> str:
     - "similar": Products related to start product (same category, complementary)
     - "customer_history": A customer's full purchase history (products they bought)
     - "goal_products": Products that support a specific goal
+    - "customer_preferences": Customer's cart, saved, and rejected products — avoid recommending rejected items
 
     Examples:
         graph_traverse("product:hydrating_cream", "also_bought")
-        graph_traverse("product:niacinamide_serum", "ingredients")
         graph_traverse("customer:charlotte_gong", "customer_history")
+        graph_traverse("customer:charlotte_gong", "customer_preferences")
         graph_traverse("goal:clear_skin", "goal_products")
 
     Args:
         start_id: Starting record ID (e.g. 'product:abc123', 'customer:charlotte_gong', 'goal:clear_skin').
                   Get IDs from grep/find results or cat output.
-        pattern: One of: also_bought, ingredients, similar, customer_history, goal_products.
+        pattern: One of: also_bought, ingredients, similar, customer_history, goal_products, customer_preferences.
     """
     logger.info(f"graph_traverse: {start_id} pattern={pattern}")
 
@@ -70,6 +81,20 @@ async def graph_traverse(start_id: str, pattern: str) -> str:
         async with get_db() as db:
             query = p["query"].replace("{start}", start_id)
             result = await db.query(query)
+
+            # Special case: customer_preferences returns {cart, saved, rejected}
+            if pattern == "customer_preferences" and result and isinstance(result[0], dict):
+                row = result[0]
+                lines = [f"{p['label']} for {start_id}:"]
+                for key, label in [("cart", "Cart"), ("saved", "Saved"), ("rejected", "Rejected")]:
+                    items = row.get(key) or []
+                    lines.append(f"  {label}: {len(items)} items")
+                    for item in items:
+                        name = item.get("name", "?")
+                        price = item.get("price")
+                        extra = f" — £{price:.2f}" if price else ""
+                        lines.append(f"    • {name}{extra}")
+                return "\n".join(lines)
 
             # Extract results from the graph query response
             items = []
