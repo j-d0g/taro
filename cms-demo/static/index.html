@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Taro — FAQ Content Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="/static/admin.css" />
+  </head>
+  <body>
+    <header class="cms-navbar" role="banner">
+      <div class="cms-navbar-brand">
+        <div class="logo" aria-hidden="true">T</div>
+        <span class="cms-navbar-title">Taro.ai</span>
+      </div>
+      <span class="cms-navbar-badge">FAQ content</span>
+    </header>
+
+    <div class="wrap">
+      <h1 class="page-title">Taro FAQ Content Management System</h1>
+      <p class="sub">
+        Edits <code>taro-api/content/policy/*.md</code> (FAQ RAG Layer 1). Publish runs ingestion (Layer 3). Requires
+        <code>CMS_ADMIN_TOKEN</code> on the server.
+      </p>
+
+      <div class="row">
+        <label for="token">Bearer token</label>
+        <input id="token" class="token" type="password" autocomplete="off" placeholder="Paste token (stored in browser)" />
+      </div>
+
+      <p class="sub" style="margin-top: 0">
+        <strong>Load</strong> pulls the file from disk into the editor and <strong>discards unsaved typing</strong>. Click
+        <strong>Save</strong> first, then Load only if you want to discard and reload.
+      </p>
+
+      <div class="toolbar-files">
+        <div class="file-picker">
+          <select id="file" aria-label="Policy file"></select>
+          <button type="button" class="secondary" id="btnLoad">Reload from disk</button>
+        </div>
+      </div>
+
+      <textarea id="editor" class="editor" placeholder="# Markdown…"></textarea>
+
+      <div class="actions-save">
+        <button type="button" class="secondary" id="btnSave">Save</button>
+        <button type="button" id="btnPublish">Publish</button>
+      </div>
+
+      <div class="status-panel">
+        <div id="status" class="status">Starting…</div>
+        <div class="status-footer">
+          <button type="button" class="secondary" id="btnList">Refresh list</button>
+        </div>
+      </div>
+
+      <footer>
+        API: <code>/api/policies</code>, <code>/api/publish/{name}</code> — same origin as this page. Taro chat:
+        <code id="taro-link">http://localhost:8002</code>
+      </footer>
+    </div>
+    <script src="/static/admin.js"></script>
+  </body>
+</html>

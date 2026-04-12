@@ -38,6 +38,56 @@ def test_raw_query_allows_reads():
         assert not BLOCKED_KEYWORDS.search(query), f"Should allow: {query}"
 
 
+def test_surreal_select_rows_single_dict():
+    """SDK may return one dict for a single-row SELECT; must not drop it."""
+    from tools.fs_tools import _surreal_select_rows
+
+    row = {"id": "documents:pol_x", "title": "Returns", "content": "...", "doc_type": "policy"}
+    assert _surreal_select_rows(row) == [row]
+    assert _surreal_select_rows([row]) == [row]
+    assert _surreal_select_rows([]) == []
+
+
+def test_surreal_select_rows_coerces_mapping():
+    """Table scans may return Mapping/Record objects, not plain dicts."""
+    from types import MappingProxyType
+
+    from tools.fs_tools import _surreal_select_rows
+
+    row = {"id": "documents:pol_x", "title": "Returns", "content": "...", "doc_type": "policy"}
+    proxy = MappingProxyType(row)
+    assert _surreal_select_rows([proxy]) == [row]
+    assert _surreal_select_rows(proxy) == [row]
+
+
+def test_surreal_select_rows_accepts_tuple_of_rows():
+    """Surreal ``query()`` may return a tuple of row dicts instead of a list."""
+    from tools.fs_tools import _surreal_select_rows
+
+    a = {"id": "documents:pol_a", "doc_type": "policy"}
+    b = {"id": "documents:pol_b", "doc_type": "policy"}
+    assert _surreal_select_rows((a, b)) == [a, b]
+
+
+def test_surreal_select_rows_unwraps_nested_list():
+    """Rare SDK shape: ``[[row, row]]`` — normalize to flat list."""
+    from tools.fs_tools import _surreal_select_rows
+
+    a = {"id": "documents:pol_a", "doc_type": "policy"}
+    b = {"id": "documents:pol_b", "doc_type": "policy"}
+    assert _surreal_select_rows([[a, b]]) == [a, b]
+
+
+def test_grep_content_preview_around_match():
+    """Policy grep should show a window around the query, not only the first 150 chars."""
+    from tools.fs_tools import _grep_content_preview
+
+    long = "A" * 400 + " CMS demo line: proof." + "Z" * 200
+    out = _grep_content_preview(long, "CMS demo line", max_len=120)
+    assert "CMS demo line" in out
+    assert "proof" in out
+
+
 def test_rrf_fusion():
     """Test the RRF fusion function directly."""
     from tools.fs_tools import _rrf_fuse

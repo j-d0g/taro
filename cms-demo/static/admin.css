@@ -1,0 +1,318 @@
+/* Taro FAQ CMS — dark UI, Accenture-inspired purple accent (decorative; not official Accenture assets). */
+
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+
+:root {
+  /* Accenture-adjacent purple (public brand color ~ #A100FF) */
+  --accent: #a100ff;
+  --accent-hover: #c266ff;
+  --accent-dim: rgba(161, 0, 255, 0.22);
+  --accent-glow: rgba(161, 0, 255, 0.35);
+
+  --bg-body: #0c0c10;
+  --bg-card: #15151c;
+  --bg-surface: #1c1c26;
+  --bg-navbar: #000000;
+  --bg-elevated: #1a1a24;
+
+  --text-primary: #ececf1;
+  --text-secondary: #9b9bab;
+  --text-dim: #6c6c7a;
+  --text-inverse: #ffffff;
+
+  --border: #2a2a38;
+  --border-light: #34344a;
+
+  --success: #3dd68c;
+  --error: #ff6b6b;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-accent: 0 4px 24px var(--accent-glow);
+
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-body);
+  background-image: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(161, 0, 255, 0.12), transparent 50%);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cms-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 56px;
+  background: var(--bg-navbar);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.cms-navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cms-navbar .logo {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, var(--accent) 0%, #6b00c9 100%);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-inverse);
+  letter-spacing: -0.5px;
+  box-shadow: 0 0 20px var(--accent-dim);
+}
+
+.cms-navbar-title {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-inverse);
+  letter-spacing: 0.02em;
+}
+
+.cms-navbar-badge {
+  font-size: 10px;
+  padding: 4px 12px;
+  border-radius: 24px;
+  background: rgba(161, 0, 255, 0.12);
+  color: var(--accent-hover);
+  border: 1px solid rgba(161, 0, 255, 0.35);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.55;
+}
+
+.sub code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  background: var(--bg-surface);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--accent-hover);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.toolbar-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.file-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-picker select {
+  flex: 1;
+  min-width: 200px;
+  max-width: 100%;
+}
+
+.actions-save {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+input[type="password"],
+input[type="text"],
+select,
+textarea {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="password"]:focus,
+input[type="text"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+input.token {
+  flex: 1;
+  min-width: 200px;
+}
+
+textarea.editor {
+  width: 100%;
+  min-height: 320px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  resize: vertical;
+  background: var(--bg-surface);
+}
+
+button {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-accent);
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+button.secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+  background: rgba(161, 0, 255, 0.08);
+  box-shadow: none;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status-panel {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.status-panel .status {
+  margin-top: 0;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.status-panel .status.ok {
+  box-shadow: inset 3px 0 0 var(--success);
+}
+
+.status-panel .status.err {
+  box-shadow: inset 3px 0 0 var(--error);
+}
+
+.status-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0.5rem 0.75rem 0.65rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+footer {
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+footer code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--bg-surface);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}

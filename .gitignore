@@ -1,7 +1,15 @@
-# Environment / Secrets
+# Environment / Secrets — never commit real API keys or tokens
+# (Templates named `.env.example` stay tracked; they contain placeholders only.)
 .env
+**/.env
 *.env
 config/.env
+taro-api/config/.env
+cms-demo/.env
+.env.local
+**/.env.local
+# Repo-root local secrets and config (preferred .env location)
+.config/
 
 # Python
 __pycache__/
@@ -32,6 +40,9 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Policy ingestion queue (local JSONL)
+.ingest_queue/
+
 # LangGraph
 .langgraph/
 
@@ -51,3 +62,6 @@ Datasets/
 
 # SurrealDB binary
 surrealfs
+
+# Local SurrealDB RocksDB files (make surrealdb)
+taro-api/data/

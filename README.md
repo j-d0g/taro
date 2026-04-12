@@ -17,7 +17,7 @@ pip install -r requirements.txt
 cp config/.env.example config/.env
 # Fill in your API keys (see .env.example for required variables)
 
-# 3. Start SurrealDB (in a separate terminal)
+# 3. Start SurrealDB (in a separate terminal; persists under taro-api/data/surreal)
 make surrealdb
 
 # 4. Seed the database with products, categories, FAQs
@@ -53,7 +53,7 @@ Opens a browser UI where you can:
 - Inspect the full reasoning chain
 - Replay and compare conversations
 
-Studio URL: https://eu.smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
+Studio URL: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 
 ### 2. FastAPI (programmatic)
 
@@ -95,7 +95,7 @@ Visit http://localhost:8002/docs for interactive API documentation.
 
 Every agent run is traced in LangSmith. To view:
 
-1. Go to https://eu.smith.langchain.com
+1. Go to https://smith.langchain.com
 2. Open the **taro** project
 3. Click any trace to see:
    - Which tools the agent called
@@ -224,7 +224,7 @@ The agent uses a **filesystem metaphor** over SurrealDB -- familiar bash command
 ```bash
 # Setup
 make install      # pip install -r requirements.txt
-make surrealdb    # Start SurrealDB (in-memory)
+make surrealdb    # SurrealDB + RocksDB in ./data/surreal (use surrealdb-memory for ephemeral)
 make seed         # Seed DB with products, categories, FAQs, graph edges
 
 # Run

@@ -4,13 +4,16 @@ import os
 from contextlib import asynccontextmanager
 from functools import lru_cache
 
-from dotenv import load_dotenv
-from loguru import logger
 from surrealdb import AsyncSurreal
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "config", ".env"))
+from logutil import logger
 
-SURREALDB_URL = os.getenv("SURREALDB_URL", "ws://localhost:8000/rpc")
+from env_bootstrap import load_app_dotenv
+
+load_app_dotenv()
+
+# Default port must match `make surrealdb` (see Makefile / config/.env.example). 8000 was a common footgun.
+SURREALDB_URL = os.getenv("SURREALDB_URL", "ws://localhost:8001/rpc")
 SURREALDB_NAMESPACE = os.getenv("SURREALDB_NAMESPACE", "hackathon")
 SURREALDB_DATABASE = os.getenv("SURREALDB_DATABASE", "chatbot")
 SURREALDB_USER = os.getenv("SURREALDB_USER", "root")

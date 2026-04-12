@@ -7,7 +7,7 @@
 -- ============================================================
 DEFINE TABLE documents SCHEMAFULL;
 
-DEFINE FIELD doc_type ON documents TYPE string;              -- "product", "faq", "article"
+DEFINE FIELD doc_type ON documents TYPE string;              -- "product", "faq", "article", "policy"
 DEFINE FIELD title ON documents TYPE string;
 DEFINE FIELD content ON documents TYPE string;
 DEFINE FIELD source_id ON documents TYPE option<record>;     -- native record link to product/review

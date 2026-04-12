@@ -5,7 +5,9 @@ Stateless — every call takes a full path, no cd/pwd.
 Graph edges appear as followable paths in ls output.
 """
 
+import json
 import re
+from collections.abc import Mapping
 from functools import lru_cache
 
 from langchain_core.tools import tool
@@ -112,6 +114,100 @@ def _rrf_fuse(vector_results: list, bm25_results: list, k: int = 60) -> list[dic
         doc["rrf_score"] = scores[doc_id]
         results.append(doc)
     return results
+
+
+def _coerce_surreal_row(item) -> dict | None:
+    """Turn a Surreal SDK row (dict, Record, Mapping, etc.) into a plain dict."""
+    if item is None:
+        return None
+    if isinstance(item, dict):
+        return item
+    if isinstance(item, Mapping):
+        try:
+            return dict(item)
+        except Exception:
+            pass
+    md = getattr(item, "model_dump", None)
+    if callable(md):
+        try:
+            out = md()
+            return out if isinstance(out, dict) else None
+        except Exception:
+            pass
+    try:
+        return json.loads(json.dumps(item, default=str))
+    except Exception:
+        logger.warning(f"Could not coerce Surreal row to dict: {type(item).__name__}")
+        return None
+
+
+def _surreal_select_rows(raw) -> list[dict]:
+    """Normalize ``db.query()`` output to ``list[dict]``.
+
+    The Surreal Python client usually returns a list of rows, but a **single-row**
+    ``SELECT`` may return **one dict** instead of ``[dict]``. Table scans may return
+    **Record** / Mapping objects — ``isinstance(x, dict)`` is false, so we must coerce.
+
+    Multi-row results are sometimes a **tuple** (not ``list``); treat like a list.
+    Rarely the SDK nests rows as ``[[row, ...]]`` — unwrap one level.
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, tuple):
+        raw = list(raw)
+    if isinstance(raw, list) and len(raw) == 1 and isinstance(raw[0], list):
+        raw = raw[0]
+    if isinstance(raw, str):
+        logger.warning(f"Surreal query returned string (unexpected): {raw[:400]}")
+        return []
+    if isinstance(raw, dict):
+        nested = raw.get("result")
+        if isinstance(nested, list):
+            return [r for x in nested if (r := _coerce_surreal_row(x)) is not None]
+        r = _coerce_surreal_row(raw)
+        return [r] if r is not None else []
+    if isinstance(raw, list):
+        out: list[dict] = []
+        for item in raw:
+            if isinstance(item, dict) and isinstance(item.get("result"), list):
+                for x in item["result"]:
+                    if (r := _coerce_surreal_row(x)) is not None:
+                        out.append(r)
+            elif (r := _coerce_surreal_row(item)) is not None:
+                out.append(r)
+        return out
+    if (r := _coerce_surreal_row(raw)) is not None:
+        return [r]
+    return []
+
+
+def _grep_content_preview(content: str, query: str, *, max_len: int = 500) -> str:
+    """Prefer a window around the match so late-paragraph policy lines are visible to the agent."""
+    if not content:
+        return ""
+    q = (query or "").strip()
+    if not q:
+        return content[:max_len] + ("…" if len(content) > max_len else "")
+    low = content.lower()
+    needles = [q] + [w for w in q.split() if len(w) >= 2]
+    for needle in needles:
+        pos = low.find(needle.lower())
+        if pos != -1:
+            match_end = pos + len(needle)
+            # Window must cover [pos, match_end]; then extend up to max_len total width.
+            pad_before = 120
+            start = max(0, pos - pad_before)
+            end = min(len(content), max(match_end + 40, start + max_len))
+            if end - start > max_len:
+                end = start + max_len
+            if match_end > end:
+                end = min(len(content), match_end + 40)
+                start = max(0, end - max_len)
+            snippet = content[start:end]
+            prefix = "…" if start > 0 else ""
+            suffix = "…" if end < len(content) else ""
+            return prefix + snippet + suffix
+    return content[:max_len] + ("…" if len(content) > max_len else "")
 
 
 # ── Handlers ─────────────────────────────────────────────────
@@ -655,29 +751,75 @@ async def grep(query: str, scope: str = "") -> str:
         scope: Path to search within. Options:
             ""  or "/"     → Search all documents
             "/products"    → Search product documents only
+            "/policy"      → Search policy / help / FAQ chunks (doc_type policy) only
             "/users"       → Search user names
             "/categories"  → Search category names
     """
     logger.info(f"grep: query='{query}', scope='{scope}'")
     scope = scope.strip().rstrip("/")
+    # Normalize so "policy", "policy/", "/policy" all hit doc_type policy (LLMs sometimes omit "/").
+    _scope_map = {
+        "policy": "/policy",
+        "products": "/products",
+        "users": "/users",
+        "categories": "/categories",
+    }
+    if scope in _scope_map:
+        scope = _scope_map[scope]
     try:
         async with get_db() as db:
-            if scope in ("", "/", "/products"):
+            if scope in ("", "/", "/products", "/policy"):
                 # Keyword search on documents table (CONTAINS fallback for BM25 broken in SurrealDB 3.0)
-                type_filter = "AND doc_type = 'product'" if scope == "/products" else ""
-                words = query.split()[:4]
-                contains_filter = " OR ".join(
-                    f"string::lowercase(content) CONTAINS string::lowercase('{w}')"
-                    for w in words
-                )
-                surql = f"""
-                    SELECT id, title, content, doc_type, source_id, 1.0 AS score
-                    FROM documents
-                    WHERE ({contains_filter}) {type_filter}
-                    LIMIT 10
-                """
-                result = await db.query(surql, {"query": query})
-                docs = result if isinstance(result, list) else []
+                if scope == "/products":
+                    type_filter = "AND doc_type = 'product'"
+                elif scope == "/policy":
+                    type_filter = "AND doc_type = 'policy'"
+                else:
+                    type_filter = ""
+
+                docs = []
+                # Policy: try full phrase first (parameterized), then any-token OR — faster + fewer agent retries.
+                if scope == "/policy" and query.strip():
+                    # WITH NOINDEX: BM25 SEARCH index on `content` can break substring CONTAINS (planner bug).
+                    phrase_surql = """
+                        SELECT id, title, content, doc_type, source_id, metadata, 1.0 AS score
+                        FROM documents WITH NOINDEX
+                        WHERE doc_type = 'policy'
+                          AND string::lowercase(content) CONTAINS string::lowercase($needle)
+                        LIMIT 10
+                    """
+                    pr = await db.query(phrase_surql, {"needle": query.strip()})
+                    docs = _surreal_select_rows(pr)
+
+                if not docs:
+                    words = [w for w in query.split()[:4] if w]
+                    if not words:
+                        return f"No results for '{query}' in {scope or 'all documents'}"
+                    contains_filter = " OR ".join(
+                        f"string::lowercase(content) CONTAINS string::lowercase('{w}')"
+                        for w in words
+                    )
+                    surql = f"""
+                        SELECT id, title, content, doc_type, source_id, metadata, 1.0 AS score
+                        FROM documents WITH NOINDEX
+                        WHERE ({contains_filter}) {type_filter}
+                        LIMIT 10
+                    """
+                    result = await db.query(surql, {"query": query})
+                    docs = _surreal_select_rows(result)
+                # Last resort: any policy chunk (handles edge cases where CONTAINS still misses).
+                if not docs and scope == "/policy":
+                    # Equality on doc_type uses idx_documents_doc_type; omit WITH NOINDEX
+                    # (NOINDEX + bare table filter has returned 0 rows in some Surreal 3 builds).
+                    scan = await db.query(
+                        """
+                        SELECT id, title, content, doc_type, source_id, metadata, 1.0 AS score
+                        FROM documents
+                        WHERE doc_type = 'policy'
+                        LIMIT 10
+                        """
+                    )
+                    docs = _surreal_select_rows(scan)
                 if not docs:
                     return f"No results for '{query}' in {scope or 'all documents'}"
                 lines = [f"grep '{query}' {scope or '/'} ({len(docs)} matches):"]
@@ -685,12 +827,24 @@ async def grep(query: str, scope: str = "") -> str:
                     title = doc.get("title", "Untitled")
                     score = doc.get("score", 0)
                     source = str(doc.get("source_id", ""))
-                    content = doc.get("content", "")[:150]
+                    meta = doc.get("metadata") or {}
+                    sk = meta.get("source_key") if isinstance(meta, dict) else None
+                    did = str(doc.get("id", ""))
                     lines.append(f"\n  {title} (score: {score:.2f})")
+                    if did:
+                        lines.append(f"    id: {did}")
+                    if sk:
+                        lines.append(f"    source_key: {sk}")
                     if source:
                         sid = source.replace("product:", "")
                         lines.append(f"    → /products/{sid}")
-                    lines.append(f"    {content}...")
+                    raw_c = doc.get("content", "") or ""
+                    preview = (
+                        _grep_content_preview(raw_c, query)
+                        if scope == "/policy"
+                        else raw_c[:150] + ("..." if len(raw_c) > 150 else "")
+                    )
+                    lines.append(f"    {preview}")
                 return "\n".join(lines)
 
             elif scope == "/users":
@@ -723,7 +877,7 @@ async def grep(query: str, scope: str = "") -> str:
                 return "\n".join(lines)
 
             else:
-                return f"Unknown scope: {scope}. Use: /products, /users, /categories, or empty for all."
+                return f"Unknown scope: {scope}. Use: /products, /policy, /users, /categories, or empty for all."
     except Exception as e:
         logger.error(f"grep error: {e}")
         return f"Error searching '{query}': {e}"
@@ -737,17 +891,21 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
     Combines meaning-based vector search with exact keyword matching via RRF.
 
     Best for: product recommendations, conceptual queries, "find something for X".
+    For **policy** questions, prefer a **single** call with the user's question and `doc_type="policy"` before trying many smaller searches.
 
     Do NOT use for: relationship queries (co-purchases, ingredients, categories, reviews, goals).
     For those, use `graph_traverse` instead — it follows actual graph edges in the database.
 
     Args:
         query: Natural language search query (e.g. "vegan protein for muscle gain").
-        doc_type: Optional filter: 'product', 'faq', or 'article'.
+        doc_type: Optional filter: 'product', 'faq', 'article', or 'policy' (help/shipping/returns text).
         limit: Max results (default 5).
     """
     logger.info(f"find: query='{query}', doc_type='{doc_type}'")
     try:
+        if doc_type:
+            doc_type = doc_type.strip().lower()
+
         # Cached + retry embedding call (avoids redundant OpenAI API hits)
         query_embedding = None
         for attempt in range(3):
@@ -772,7 +930,7 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
 
             # Vector search: cosine similarity ORDER BY (KNN <|N|> broken in SurrealDB 3.0)
             vec_surql = f"""
-                SELECT id, title, content, doc_type, source_id,
+                SELECT id, title, content, doc_type, source_id, metadata,
                        vector::similarity::cosine(embedding, $embedding) AS vec_score
                 FROM documents
                 WHERE doc_type IS NOT NONE {type_filter}
@@ -782,7 +940,7 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
 
             # Keyword search: try BM25, fall back to CONTAINS
             bm25_surql = f"""
-                SELECT id, title, content, doc_type, source_id,
+                SELECT id, title, content, doc_type, source_id, metadata,
                        search::score(1) AS bm25_score
                 FROM documents
                 WHERE content @1@ $query {type_filter}
@@ -793,9 +951,8 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
             vec_result = await db.query(vec_surql, params)
             bm25_result = await db.query(bm25_surql, params)
 
-            # Normalize results (SurrealDB 3.0 returns flat list, handle string errors)
-            vec_docs = vec_result if isinstance(vec_result, list) else []
-            bm25_docs = bm25_result if isinstance(bm25_result, list) else []
+            vec_docs = _surreal_select_rows(vec_result)
+            bm25_docs = _surreal_select_rows(bm25_result)
 
             # BM25 fallback: if @1@ returned empty, use CONTAINS
             if not bm25_docs:
@@ -803,15 +960,35 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
                 words = query.split()[:3]  # Use first 3 words
                 contains_filter = " OR ".join(f"string::lowercase(content) CONTAINS string::lowercase('{w}')" for w in words)
                 fallback_surql = f"""
-                    SELECT id, title, content, doc_type, source_id, 1.0 AS bm25_score
-                    FROM documents
+                    SELECT id, title, content, doc_type, source_id, metadata, 1.0 AS bm25_score
+                    FROM documents WITH NOINDEX
                     WHERE ({contains_filter}) {type_filter}
                     LIMIT {fetch_limit}
                 """
                 bm25_result = await db.query(fallback_surql, params)
-                bm25_docs = bm25_result if isinstance(bm25_result, list) else []
+                bm25_docs = _surreal_select_rows(bm25_result)
 
             fused = _rrf_fuse(vec_docs, bm25_docs)[:limit]
+
+            # Policy-only: if hybrid search returned nothing, list policy chunks anyway (vector/BM25 quirks).
+            if not fused and doc_type == "policy":
+                scan = await db.query(
+                    f"""
+                    SELECT id, title, content, doc_type, source_id, metadata,
+                           0 AS vec_score, 1.0 AS bm25_score
+                    FROM documents
+                    WHERE doc_type = 'policy'
+                    LIMIT {fetch_limit}
+                    """
+                )
+                scan_docs = _surreal_select_rows(scan)
+                if not scan_docs:
+                    logger.warning(
+                        "find: policy fallback scan returned 0 rows — "
+                        "no doc_type=policy chunks in this Surreal namespace/database."
+                    )
+                if scan_docs:
+                    fused = scan_docs[:limit]
 
             if not fused:
                 return f"No results for '{query}'. Try broader terms or grep for exact matches."
@@ -824,9 +1001,16 @@ async def find(query: str, doc_type: str = "", limit: int = 5) -> str:
                 bm25 = doc.get("bm25_score", 0)
                 dtype = doc.get("doc_type", "?")
                 source = str(doc.get("source_id", ""))
+                meta = doc.get("metadata") or {}
+                sk = meta.get("source_key") if isinstance(meta, dict) else None
+                did = str(doc.get("id", ""))
                 content = doc.get("content", "")[:200]
 
                 lines.append(f"\n  {title} (rrf: {rrf:.4f}, vec: {vec:.3f}, bm25: {bm25:.2f}, type: {dtype})")
+                if did:
+                    lines.append(f"    id: {did}")
+                if sk:
+                    lines.append(f"    source_key: {sk}")
                 if source:
                     sid = source.replace("product:", "")
                     lines.append(f"    → /products/{sid}")

@@ -14,7 +14,6 @@ import sys
 # Ensure src/ is on Python path (needed for LangGraph Studio which loads from project root)
 sys.path.insert(0, os.path.dirname(__file__))
 
-from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
@@ -38,8 +37,6 @@ try:
     from langchain_google_genai import ChatGoogleGenerativeAI
 except ImportError:
     ChatGoogleGenerativeAI = None
-
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "config", ".env"))
 
 # Default LLM settings
 DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "openai")

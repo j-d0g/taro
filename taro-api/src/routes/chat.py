@@ -1,6 +1,7 @@
 """Chat endpoints: POST /chat, POST /chat/stream."""
 
 import json
+import os
 import time
 
 from fastapi import APIRouter
@@ -20,6 +21,16 @@ from models import ChatRequest, ChatResponse
 
 
 router = APIRouter()
+
+# LangGraph default is 25; override only if needed (prefer prompt/tool fixes over raising this).
+_AGENT_RECURSION_LIMIT = int(os.getenv("AGENT_RECURSION_LIMIT", "25"))
+
+
+def _agent_config(thread_id: str) -> dict:
+    return {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": _AGENT_RECURSION_LIMIT,
+    }
 
 
 async def _load_conversation(conn, thread_id: str) -> list[dict]:
@@ -103,7 +114,16 @@ async def append_preference_context(conn, thread_id: str, user_id: str | None, p
         )
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    summary="Chat (slow: full agent run)",
+    description=(
+        "Runs the LangGraph ReAct agent (LLM + SurrealDB tools). "
+        "Expect **30s–several minutes** per request; Swagger stays on “Loading” until the full reply is ready. "
+        "Watch the API terminal for progress. If it never finishes, check OPENAI_API_KEY, SurrealDB, and network."
+    ),
+)
 async def chat(request: ChatRequest):
     """Send a message to the chatbot."""
     logger.info(f"Chat request: thread={request.thread_id}, message='{request.message[:80]}'")
@@ -111,7 +131,7 @@ async def chat(request: ChatRequest):
     try:
         agent = get_agent(request.model_provider, request.model_name, request.prompt_id)
 
-        config = {"configurable": {"thread_id": request.thread_id}}
+        config = _agent_config(request.thread_id)
 
         # Load persisted history for this thread (if any) and prepend as a short summary.
         history_prefix = ""
@@ -147,6 +167,14 @@ async def chat(request: ChatRequest):
             if hasattr(msg, "tool_calls") and msg.tool_calls:
                 for tc in msg.tool_calls:
                     tool_calls.append({"name": tc.get("name", ""), "args": tc.get("args", {})})
+
+        # Observability: log when find/grep returns citeable policy chunks
+        for msg in messages:
+            name = getattr(msg, "name", "") or ""
+            if name in ("find", "grep"):
+                text = str(getattr(msg, "content", ""))
+                if "source_key:" in text:
+                    logger.info(f"retrieval_citation: tool={name} (policy/help chunk in output)")
 
         # Extract product data from tool calls and tool outputs
         product_ids = collect_product_ids_from_messages(messages)
@@ -202,7 +230,7 @@ async def chat_stream(request: ChatRequest):
     logger.info(f"Stream request: thread={request.thread_id}, message='{request.message[:80]}'")
 
     agent = get_agent(request.model_provider, request.model_name, request.prompt_id)
-    config = {"configurable": {"thread_id": request.thread_id}}
+    config = _agent_config(request.thread_id)
 
     # Load persisted history for this thread (if any) and prepend as a short summary.
     history_prefix = ""

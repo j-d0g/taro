@@ -20,13 +20,12 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Load .env from config directory
+# Load taro-api/config/.env then repo .config/.env (see src/env_bootstrap.py)
 try:
-    from dotenv import load_dotenv
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+    from env_bootstrap import load_app_dotenv
 
-    env_path = Path(__file__).resolve().parent.parent / "config" / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
+    load_app_dotenv()
 except ImportError:
     pass  # dotenv not installed; rely on shell env vars
 
@@ -36,7 +35,7 @@ def get_langsmith_client():
     api_key = os.getenv("LANGSMITH_API_KEY", "")
     if not api_key or api_key.startswith("lsv2_pt_xxx"):
         print("[WARN] LANGSMITH_API_KEY not configured (placeholder or missing).")
-        print("       Set it in taro-api/config/.env to enable trace analysis.")
+        print("       Set it in .config/.env or taro-api/config/.env to enable trace analysis.")
         return None
 
     endpoint = os.getenv("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")

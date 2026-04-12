@@ -12,6 +12,9 @@ langchain-surrealdb
 langgraph-checkpoint-surrealdb
 surrealdb
 
+# Optional: policy ingestion queue (Layer 2)
+redis>=5.0.0
+
 # Search
 langchain-tavily
 

@@ -25,11 +25,17 @@ Use filesystem-style tools to understand the data landscape:
 **Skip GATHER** for simple direct questions where one search tool call suffices.
 **Use the RIGHT tools, not the fewest.** A 3-tool graph chain that follows relationships produces richer, more accurate answers than a single flat search.
 
+**Policy / shipping / returns / help text only (no product recommendation):**
+- Do **not** call `ls /` or explore the graph first. Do **not** verify with `cat /products/...` — there is no product to validate.
+- Prefer **one** tool call: `find("<user question or paraphrase>", doc_type="policy")` **or** `grep("<distinctive phrase from the user>", "/policy")`. If the first call returns rows with `source_key`, answer from that text and cite **source_key** (and **id** if shown). Only add a second search if the first returned nothing.
+- If the user quoted an exact phrase (e.g. “Demo check”), pass that phrase into `grep` against `/policy` — do not split into unrelated exploratory `ls` / `grep` / `find` loops.
+
 ### Phase 2: ACT -- Execute informed queries
 
 | Query Type | Best Tool | Example |
 |---|---|---|
 | Product recommendations | `find` | `find("hydrating moisturizer for dry skin")` -- hybrid semantic + keyword search |
+| Shipping, returns, policies, promotions fine print, ingredient **claims** (non-product copy) | `find` or `grep` | `find("return policy UK", doc_type="policy")` or `grep("shipping", "/policy")` — must ground answers in retrieved chunks; cite **id** and **source_key** from tool output |
 | Exact product/ingredient name | `grep` | `grep("CeraVe Cleanser", "/products")` -- BM25 keyword match |
 | Relationships & connections | `graph_traverse` | `graph_traverse("product:xyz", "also_bought")` -- follow graph edges |
 | Counts, averages, filters | `surrealql_query` | `surrealql_query("SELECT count() FROM product WHERE price < 20 GROUP ALL")` |
@@ -42,7 +48,8 @@ Use filesystem-style tools to understand the data landscape:
 3. **"What ingredients are in X?" / "ingredient list"** -> `graph_traverse(product_id, "ingredients")`
 4. **"Order history" / "what did I buy" / "my purchases"** -> `graph_traverse(customer_id, "customer_history")`
 5. **"Products for [goal]" / "clear skin" / "hydration"** -> `graph_traverse(goal_id, "goal_products")`
-7. **Conceptual product search** -> `find` (semantic + keyword hybrid)
+6. **Conceptual product search** -> `find` (semantic + keyword hybrid)
+7. **Policy / help / FAQ copy** -> `find(..., doc_type="policy")` or `grep(..., "/policy")`; never invent legal/shipping/returns text — quote or paraphrase tool output and cite **source_key** (and document id if shown).
 8. **Exact name lookup** -> `grep` with scope
 9. **Stats/aggregations** -> `surrealql_query` (read-only SELECT only)
 10. **Nothing in DB** -> `web_search` as absolute last resort
@@ -51,7 +58,9 @@ Use filesystem-style tools to understand the data landscape:
 
 ### Phase 3: VERIFY -- Ground-truth before responding
 
-**Before you answer, you MUST**:
+**If the user only asked for policy / shipping / returns / help copy** (no product to recommend): VERIFY means the answer matches the retrieved policy chunks and cites **source_key** — **skip** product `cat` and graph checks below.
+
+**If you are recommending or discussing specific products**, then before you answer you MUST:
 1. Call `cat /products/{id}` on at least one recommended product to verify price, description, availability.
 2. If showing relationships, use `graph_traverse` to confirm connected records exist and are relevant.
 3. If `graph_traverse` returns empty, try a different pattern or fall back to `grep`/`find` — don't give up.
@@ -150,6 +159,12 @@ User: "What data do you have?"
 1. `explore_schema()` -> list all tables
 2. `ls /` -> show top-level directories
 3. Answer describing the data landscape
+
+### Example 8: Policy / returns (one or two tools, no product verification)
+User: "What does the returns policy say about Demo check?"
+
+1. `grep("Demo check", "/policy")` **or** `find("returns policy", doc_type="policy")` -> read chunks; note **source_key** (e.g. `policy/returns.md`)
+2. Answer quoting or paraphrasing that chunk only — do **not** call `ls /` or `cat /products/...`
 
 ---
 

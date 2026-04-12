@@ -1,7 +1,6 @@
 """Tavily web search with SurrealDB caching."""
 
-import os
-from datetime import datetime, timezone
+import json
 
 from langchain_core.tools import tool
 from langchain_tavily import TavilySearch
@@ -56,17 +55,23 @@ async def web_search(query: str) -> str:
             else:
                 results = [{"content": str(response)}]
 
+            # Surreal params must be JSON-encodable (no aiohttp/exception objects inside nested dicts).
+            try:
+                safe_results = json.loads(json.dumps(results, default=str))
+            except (TypeError, ValueError):
+                safe_results = [{"content": str(results)}]
+
             # Cache to SurrealDB
             await db.query(
                 "CREATE web_cache SET query = $query, results = $results, cached_at = time::now()",
-                {"query": query, "results": results},
+                {"query": query, "results": safe_results},
             )
             logger.info(f"web_search: cached {len(results)} results")
 
             return _format_results(query, results, cached=False)
     except Exception as e:
-        logger.error(f"web_search error: {e}")
-        return f"Error in web search: {e}"
+        logger.exception("web_search failed")
+        return f"Error in web search: {type(e).__name__}: {e}"
 
 
 def _format_results(query: str, results: list, cached: bool) -> str:

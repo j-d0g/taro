@@ -98,7 +98,7 @@ product_quality = GEval(
 
 ### Status
 - **Already configured** in the project (`.env.example` has `LANGSMITH_TRACING=true`)
-- Endpoint: `https://eu.api.smith.langchain.com` (EU region)
+- Endpoint: `https://api.smith.langchain.com` (US region; EU: `https://eu.api.smith.langchain.com`)
 - Project: `taro`
 - `langsmith` package already in `requirements.txt`
 

@@ -7,7 +7,7 @@ The project uses LangSmith for tracing via environment variables defined in `tar
 
 ```
 LANGSMITH_TRACING=true
-LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 LANGSMITH_API_KEY=lsv2_pt_xxxx...
 LANGSMITH_PROJECT=taro
 ```

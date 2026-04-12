@@ -12,15 +12,16 @@ import asyncio
 import csv
 import os
 import sys
+from pathlib import Path
 from collections import defaultdict
 from itertools import combinations
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from dotenv import load_dotenv
+from env_bootstrap import load_app_dotenv
 from langchain_openai import OpenAIEmbeddings
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "config", ".env"))
+load_app_dotenv(api_root=Path(__file__).resolve().parent.parent)
 
 from db import get_db
 

@@ -21,13 +21,39 @@ TOOLS_AVAILABLE = [
     "surrealql_query", "web_search", "tree", "explore_schema",
 ]
 
+def _user_query_for_judge(raw: str) -> str:
+    """Strip prepended profile context from chat messages.
+
+    ``build_message_content`` sends ``<profile>\\n\\n<actual user message>``. The judge
+    must score against the real question, not truncated profile-only text.
+
+    Only splits on the first ``\\n\\n`` when the head looks like our injected profile, so
+    plain multi-paragraph user messages (no user_id) stay intact.
+    """
+    if not raw:
+        return ""
+    s = raw.strip()
+    if "\n\n" not in s:
+        return s
+    head, tail = s.split("\n\n", 1)
+    if "[User:" in head or "Graph entry: cat /users/" in head:
+        return tail.strip()
+    return s
+
+
 JUDGE_PROMPT = """\
 You are a tool-selection judge for an e-commerce chatbot agent.
 
 The agent has these tools: {tools}
 
-Given the user query, the tools the agent called, and the final response,
-evaluate whether the agent picked the right tools.
+Architecture facts (do not contradict these in your verdict):
+- Shipping, returns, and policy text for this bot live in SurrealDB as `documents` with `doc_type` policy.
+  The right tools are `grep(..., "/policy")` and/or `find(..., doc_type="policy")`. There is NO tool that opens a "CMS",
+  "admin", or internal markdown editor — never say the agent should have searched "the CMS" or "live CMS" as a separate step.
+- `web_search` is optional public-web fallback (domain-scoped). Do NOT treat omission of `web_search` as a mistake for
+  internal policy questions. Do NOT recommend hunting an external "CMS" for phrases that are supposed to be in the database.
+
+Given the user query, the tools the agent called, and the final response, evaluate whether the agent picked sensible tools.
 
 User query: {query}
 Tools called: {tools_called}
@@ -36,7 +62,7 @@ Agent response (truncated): {response}
 Respond with ONLY valid JSON (no markdown fences):
 {{
   "verdict": "success" | "partial" | "failure",
-  "pattern_type": "<category: product_search | graph_query | recommendation | general_info | comparison>",
+  "pattern_type": "<product_search | graph_query | recommendation | policy_lookup | general_info | comparison>",
   "query_pattern": "<short abstracted pattern, e.g. 'find products by ingredient'>",
   "best_tool": "<which tool was most appropriate>",
   "insight": "<1-sentence human-readable takeaway>",
@@ -91,7 +117,8 @@ def _extract_turn_data(messages: list) -> dict | None:
     while i >= 0:
         msg = messages[i]
         if isinstance(msg, HumanMessage):
-            query = msg.content[:300] if isinstance(msg.content, str) else str(msg.content)[:300]
+            raw = msg.content if isinstance(msg.content, str) else str(msg.content)
+            query = _user_query_for_judge(raw)[:4000]
             break
         i -= 1
 

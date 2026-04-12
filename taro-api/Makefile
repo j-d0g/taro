@@ -1,4 +1,7 @@
-.PHONY: install serve studio seed surrealdb health test verify eval eval-basic smoke stress restart test-chat test-distill traces frontend help
+.PHONY: install serve studio seed surrealdb surrealdb-memory health test verify eval eval-basic smoke stress restart test-chat test-distill traces frontend help ingest-policy ingest-worker ingest-drain
+
+# Prefer project venv (absolute path: recipes use `cd src` so a relative .venv would break)
+PYTHON := $(shell test -x "$(CURDIR)/.venv/bin/python" && echo "$(CURDIR)/.venv/bin/python" || command -v python3 2>/dev/null || echo python)
 
 # Show all available commands
 help:
@@ -7,8 +10,10 @@ help:
 	@echo "  ════════════════════════════════════════════"
 	@echo ""
 	@echo "  Setup"
+	@echo "    python3 -m venv .venv   Create venv once (if missing)"
 	@echo "    make install        Install Python dependencies"
-	@echo "    make surrealdb      Start SurrealDB (in-memory)"
+	@echo "    make surrealdb      Start SurrealDB (RocksDB in ./data/surreal, :8001)"
+	@echo "    make surrealdb-memory  Ephemeral in-memory SurrealDB (:8001)"
 	@echo "    make seed           Seed DB with sample data"
 	@echo ""
 	@echo "  Run"
@@ -30,15 +35,18 @@ help:
 	@echo "    make test-distill   Test memory distillation flow"
 	@echo "    make traces         Analyse LangSmith traces"
 	@echo "    make conversations  List persisted conversations"
+	@echo "    make ingest-policy    Chunk+embed policy markdown (content/policy) into documents"
+	@echo "    make ingest-drain     Process one batch from file/redis ingestion queue"
+	@echo "    make ingest-worker    Long-running ingestion worker (file/redis queue)"
 	@echo ""
 
-# Install dependencies
+# Install dependencies (create venv first: python3 -m venv .venv)
 install:
-	pip install -r requirements.txt
+	$(PYTHON) -m pip install -r requirements.txt
 
 # Run all tests
 test:
-	cd src && python -m pytest ../tests/ -v
+	cd src && $(PYTHON) -m pytest ../tests/ -v
 
 # Verify everything (syntax + imports + tests) -- used by Stop hook
 verify: test
@@ -46,7 +54,7 @@ verify: test
 
 # Start FastAPI server
 serve:
-	cd src && python main.py
+	cd src && $(PYTHON) main.py
 
 # Start LangGraph Studio
 studio:
@@ -54,11 +62,19 @@ studio:
 
 # Seed SurrealDB with sample data
 seed:
-	python schema/seed.py
+	$(PYTHON) schema/seed.py
 
-# Start SurrealDB (in-memory)
+# SurrealDB: bind port must match SURREALDB_URL in .env (default 8001)
+SURREAL_BIND ?= 127.0.0.1:8001
+
+# Start SurrealDB with on-disk RocksDB under ./data/surreal (gitignored)
 surrealdb:
-	surreal start --user root --pass root memory
+	@mkdir -p "$(CURDIR)/data/surreal"
+	cd "$(CURDIR)" && surreal start --user root --pass root --bind $(SURREAL_BIND) rocksdb://data/surreal
+
+# Ephemeral in-memory (no local folder; data lost on exit)
+surrealdb-memory:
+	surreal start --user root --pass root --bind $(SURREAL_BIND) memory
 
 # Health check
 health:
@@ -75,7 +91,7 @@ restart:
 	@echo "Restarting API..."
 	@lsof -i :8002 -t 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@sleep 2
-	@cd src && nohup python -m uvicorn main:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 300 > /tmp/taro-api.log 2>&1 &
+	@cd src && nohup $(PYTHON) -m uvicorn main:app --host 0.0.0.0 --port 8002 --timeout-keep-alive 300 > /tmp/taro-api.log 2>&1 &
 	@sleep 5
 	@curl -sf http://localhost:8002/health > /dev/null && echo "API healthy on :8002" || (echo "FAILED - check /tmp/taro-api.log"; cat /tmp/taro-api.log | tail -10; exit 1)
 
@@ -83,19 +99,19 @@ restart:
 eval:
 	@echo "=== Evaluation Suite (DeepEval) ==="
 	@curl -sf http://localhost:8002/health > /dev/null || (echo "API not running. Run: make restart"; exit 1)
-	@python -c "import deepeval" 2>/dev/null || (echo "deepeval not installed. Run: pip install deepeval"; exit 1)
+	@$(PYTHON) -c "import deepeval" 2>/dev/null || (echo "deepeval not installed. Run: pip install deepeval"; exit 1)
 	@export $$(grep OPENAI_API_KEY config/.env | xargs) && deepeval test run tests/eval_suite.py -v
 
 # Run eval suite without DeepEval (basic assertions only)
 eval-basic:
 	@echo "=== Evaluation Suite (basic mode) ==="
 	@curl -sf http://localhost:8002/health > /dev/null || (echo "API not running. Run: make restart"; exit 1)
-	python -u tests/eval_suite.py
+	$(PYTHON) -u tests/eval_suite.py
 
 # Run adversarial stress test (restarts API first to ensure fresh code)
 stress: restart
 	@echo "Running stress test (43 queries, ~20 min)..."
-	python -u tests/stress_test_harness.py
+	$(PYTHON) -u tests/stress_test_harness.py
 
 # Quick smoke test: 3 representative queries
 smoke:
@@ -125,7 +141,7 @@ test-distill:
 
 # Analyse LangSmith traces
 traces:
-	python scripts/analyse_traces.py
+	$(PYTHON) scripts/analyse_traces.py
 
 # Start frontend dev server
 frontend:
@@ -134,6 +150,16 @@ frontend:
 	@cd ../taro-web && python -m http.server 3001 > /tmp/taro-web.log 2>&1 &
 	@sleep 1
 	@echo "Frontend running on http://localhost:3001"
+
+# Policy / FAQ ingestion (Layers 2–3); requires OPENAI_API_KEY and running SurrealDB
+ingest-policy:
+	cd src && $(PYTHON) -m ingestion.cli ingest-all
+
+ingest-drain:
+	cd src && $(PYTHON) -m ingestion.cli drain
+
+ingest-worker:
+	cd src && $(PYTHON) -m ingestion.run_worker
 
 # List persisted conversations
 conversations:
