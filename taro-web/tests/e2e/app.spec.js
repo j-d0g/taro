@@ -53,9 +53,9 @@ test.describe('Taro.ai Frontend', () => {
 
   test('filter tabs change active state', async ({ page }) => {
     await page.goto('/');
-    const beautyTab = page.locator('.filter-tab[data-vertical="Beauty"]');
-    await beautyTab.click();
-    await expect(beautyTab).toHaveClass(/active/);
+    const skincareTab = page.locator('.filter-tab[data-vertical="Skincare"]');
+    await skincareTab.click();
+    await expect(skincareTab).toHaveClass(/active/);
     const allTab = page.locator('.filter-tab[data-vertical="All"]');
     await expect(allTab).not.toHaveClass(/active/);
   });

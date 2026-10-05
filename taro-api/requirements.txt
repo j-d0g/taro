@@ -1,5 +1,7 @@
 # LangGraph + LangChain
 langgraph>=0.6.0
+# langchain-surrealdb pins langchain-core ~=1.1, which lacks allowed_objects.
+langgraph-checkpoint<4.1.0
 langchain>=0.3.0
 langchain-openai>=0.3.0
 langchain-core>=0.3.0
