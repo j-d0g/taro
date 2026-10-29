@@ -42,6 +42,7 @@ node_modules/
 
 # Worktrees
 .worktrees/
+.claude/worktrees/
 
 # Archive
 archive/
